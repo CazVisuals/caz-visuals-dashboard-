@@ -139,6 +139,7 @@
 
   <button onclick="generateQuote()">Generate Quote</button>
   <button onclick="saveQuote()">Save Quote</button>
+  <button onclick="convertQuoteToContract()">Convert Quote To Contract</button>
   <div id="quoteOutput" class="quote-box"></div>
   <button onclick="copyQuote()">Copy Quote</button>
 </div>
@@ -347,6 +348,66 @@ Looking forward to working with you!
     return { service, servicePrice, travelFee, hours, total, deposit, balance };
   }
 
+  function buildContractText(data){
+    const hoursLine = data.hours
+      ? `Event Coverage:\n${data.hours} hour(s) at $200/hr\n\n`
+      : "";
+
+    return `CAZ VISUALS PHOTOGRAPHY / VIDEOGRAPHY AGREEMENT
+
+Client:
+${data.client_name}
+
+Service:
+${data.service}
+
+${hoursLine}Session Date:
+${data.session_date || "To be confirmed"}
+
+Location:
+${data.location || "To be confirmed"}
+
+Total:
+$${data.total}
+
+Non-Refundable Deposit:
+$${data.deposit}
+
+Balance Due:
+$${data.balance}
+
+AGREEMENT TERMS:
+
+1. Booking and Deposit
+A 50% non-refundable deposit is required to reserve the session date. The date is not officially reserved until the deposit is received.
+
+2. Remaining Balance
+The remaining balance is due before or on the day of the session unless otherwise agreed in writing.
+
+3. Rescheduling
+Client may request to reschedule due to weather, emergency, or scheduling conflict. Caz Visuals will make reasonable efforts to provide a new available date.
+
+4. Cancellation
+The deposit is non-refundable because it reserves time on the calendar and blocks availability for other clients.
+
+5. Delivery
+Final images, videos, or galleries will be delivered within the timeline discussed with the client. Delivery time may vary based on project size.
+
+6. Creative Rights
+Caz Visuals retains copyright ownership of images and videos created. Client receives permission to use final delivered content for personal, promotional, or agreed business use.
+
+7. Portfolio Use
+Caz Visuals may use final images or videos for portfolio, website, social media, and promotional purposes unless the client requests privacy in writing.
+
+8. Client Responsibility
+Client is responsible for arriving on time, securing any required location permissions, and communicating specific needs before the session.
+
+By approving this agreement and submitting the deposit, the client agrees to the terms above.
+
+Caz Visuals
+Operated by ImCaz Photography LLC`;
+  }
+
   function generateQuote(){
     const name = document.getElementById("quoteName").value;
     const sessionDate = document.getElementById("sessionDate").value;
@@ -436,6 +497,56 @@ Thank you for choosing Caz Visuals.`;
     alert("Quote saved.");
   }
 
+  async function convertQuoteToContract(){
+    if(!currentQuoteData){
+      alert("Generate a quote first.");
+      return;
+    }
+
+    if(!currentSavedQuoteId){
+      const { data, error } = await db.from("quotes").insert([currentQuoteData]).select();
+
+      if(error){
+        alert("Error saving quote first: " + error.message);
+        return;
+      }
+
+      currentSavedQuoteId = data && data[0] ? data[0].id : null;
+    }
+
+    const contractText = buildContractText(currentQuoteData);
+
+    const contractData = {
+      lead_id: currentQuoteData.lead_id || null,
+      quote_id: currentSavedQuoteId,
+      client_name: currentQuoteData.client_name,
+      service: currentQuoteData.service,
+      session_date: currentQuoteData.session_date || null,
+      location: currentQuoteData.location || "To be confirmed",
+      hours: currentQuoteData.hours || null,
+      total: currentQuoteData.total,
+      deposit: currentQuoteData.deposit,
+      balance: currentQuoteData.balance,
+      contract_text: contractText,
+      signed: false,
+      deposit_paid: false,
+      balance_paid: false,
+      payment_status: "awaiting deposit"
+    };
+
+    const { error } = await db.from("contracts").insert([contractData]);
+
+    if(error){
+      alert("Error creating contract: " + error.message);
+      return;
+    }
+
+    currentContract = contractText;
+    document.getElementById("contractOutput").textContent = currentContract;
+    alert("Quote converted to contract.");
+    loadContracts();
+  }
+
   function copyQuote(){
     if(!currentQuote){ alert("Generate a quote first."); return; }
     navigator.clipboard.writeText(currentQuote);
@@ -448,65 +559,7 @@ Thank you for choosing Caz Visuals.`;
       return;
     }
 
-    const hoursLine = currentQuoteData.hours
-      ? `Event Coverage:\n${currentQuoteData.hours} hour(s) at $200/hr\n\n`
-      : "";
-
-    currentContract =
-`CAZ VISUALS PHOTOGRAPHY / VIDEOGRAPHY AGREEMENT
-
-Client:
-${currentQuoteData.client_name}
-
-Service:
-${currentQuoteData.service}
-
-${hoursLine}Session Date:
-${currentQuoteData.session_date || "To be confirmed"}
-
-Location:
-${currentQuoteData.location || "To be confirmed"}
-
-Total:
-$${currentQuoteData.total}
-
-Non-Refundable Deposit:
-$${currentQuoteData.deposit}
-
-Balance Due:
-$${currentQuoteData.balance}
-
-AGREEMENT TERMS:
-
-1. Booking and Deposit
-A 50% non-refundable deposit is required to reserve the session date. The date is not officially reserved until the deposit is received.
-
-2. Remaining Balance
-The remaining balance is due before or on the day of the session unless otherwise agreed in writing.
-
-3. Rescheduling
-Client may request to reschedule due to weather, emergency, or scheduling conflict. Caz Visuals will make reasonable efforts to provide a new available date.
-
-4. Cancellation
-The deposit is non-refundable because it reserves time on the calendar and blocks availability for other clients.
-
-5. Delivery
-Final images, videos, or galleries will be delivered within the timeline discussed with the client. Delivery time may vary based on project size.
-
-6. Creative Rights
-Caz Visuals retains copyright ownership of images and videos created. Client receives permission to use final delivered content for personal, promotional, or agreed business use.
-
-7. Portfolio Use
-Caz Visuals may use final images or videos for portfolio, website, social media, and promotional purposes unless the client requests privacy in writing.
-
-8. Client Responsibility
-Client is responsible for arriving on time, securing any required location permissions, and communicating specific needs before the session.
-
-By approving this agreement and submitting the deposit, the client agrees to the terms above.
-
-Caz Visuals
-Operated by ImCaz Photography LLC`;
-
+    currentContract = buildContractText(currentQuoteData);
     document.getElementById("contractOutput").textContent = currentContract;
   }
 
@@ -592,16 +645,9 @@ Operated by ImCaz Photography LLC`;
 
     contracts.forEach(function(c){
       pipelineRevenue += Number(c.total || 0);
-
       if(c.signed) signedCount++;
-
-      if(c.deposit_paid){
-        depositsReceived += Number(c.deposit || 0);
-      }
-
-      if(!c.balance_paid){
-        outstanding += Number(c.balance || 0);
-      }
+      if(c.deposit_paid) depositsReceived += Number(c.deposit || 0);
+      if(!c.balance_paid) outstanding += Number(c.balance || 0);
     });
 
     document.getElementById("pipelineRevenue").innerText = pipelineRevenue;

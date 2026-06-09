@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Caz Visuals Dashboard</title>
+  <title>Caz Visuals CRM</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
@@ -30,6 +30,39 @@
       margin-top:0;
     }
 
+    .nav{
+      display:flex;
+      justify-content:space-around;
+      flex-wrap:wrap;
+    }
+
+    .nav a{
+      color:#d4af37;
+      text-decoration:none;
+      font-weight:bold;
+      margin:5px;
+    }
+
+    input, select, textarea{
+      width:100%;
+      padding:12px;
+      margin:8px 0 15px 0;
+      border-radius:8px;
+      border:none;
+      font-size:16px;
+    }
+
+    button{
+      background:#d4af37;
+      color:#111;
+      border:none;
+      padding:12px;
+      border-radius:8px;
+      font-weight:bold;
+      width:100%;
+      font-size:16px;
+    }
+
     table{
       width:100%;
       border-collapse:collapse;
@@ -48,41 +81,66 @@
     ul{
       padding-left:20px;
     }
-
-    .nav{
-      display:flex;
-      justify-content:space-around;
-      flex-wrap:wrap;
-    }
-
-    .nav a{
-      color:#d4af37;
-      text-decoration:none;
-      font-weight:bold;
-      margin:5px;
-    }
   </style>
 </head>
 
 <body>
 
-<h1>Caz Visuals Dashboard</h1>
+<h1>Caz Visuals CRM</h1>
 
 <div class="card">
   <div class="nav">
     <a href="#">Dashboard</a>
+    <a href="#">Add Lead</a>
     <a href="#">Leads</a>
     <a href="#">Revenue</a>
-    <a href="#">Content</a>
+    <a href="#">AI Employee</a>
   </div>
 </div>
 
 <div class="card">
   <h2>Business Stats</h2>
-
   <p>Leads: 2</p>
   <p>Bookings: 1</p>
   <p>Revenue: $300</p>
+</div>
+
+<div class="card">
+  <h2>Add New Lead</h2>
+
+  <label>Name</label>
+  <input type="text" placeholder="Client name">
+
+  <label>Phone</label>
+  <input type="tel" placeholder="Client phone number">
+
+  <label>Email</label>
+  <input type="email" placeholder="Client email">
+
+  <label>Service</label>
+  <select>
+    <option>Mini Session - $150</option>
+    <option>Couples Session - $300</option>
+    <option>Family Session - $350</option>
+    <option>Branding Session - $250</option>
+    <option>Events - $200/hr</option>
+  </select>
+
+  <label>Status</label>
+  <select>
+    <option>Inquiry</option>
+    <option>Contacted</option>
+    <option>Quote Sent</option>
+    <option>Booked</option>
+    <option>Shot Complete</option>
+    <option>Delivered</option>
+    <option>Closed</option>
+  </select>
+
+  <label>Notes</label>
+  <textarea rows="4" placeholder="Example: Wants family photos in Edmond next month"></textarea>
+
+  <button>Add Lead</button>
 </div>
 
 <div class="card">
@@ -111,7 +169,6 @@
 
 <div class="card">
   <h2>Photography Packages</h2>
-
   <ul>
     <li>Mini Session - $150</li>
     <li>Couples Session - $300</li>
@@ -122,14 +179,12 @@
 </div>
 
 <div class="card">
-  <h2>AI Employee Tasks</h2>
-
+  <h2>AI Employee Coming Next</h2>
   <ul>
-    <li>Reply to new leads</li>
+    <li>Draft client replies</li>
     <li>Create quotes</li>
-    <li>Generate Instagram captions</li>
-    <li>Generate TikTok captions</li>
-    <li>Track client follow ups</li>
+    <li>Generate captions</li>
+    <li>Track follow-ups</li>
   </ul>
 </div>
 

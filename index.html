@@ -16,7 +16,7 @@
     button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
     .delete-btn{background:#8b1e1e;color:white;}
     .edit-btn{background:#444;color:white;}
-    .lead-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
+    .lead-card,.contract-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
     .small{color:#ccc;font-size:14px;}
     .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     .stat-box{background:#2a2a2a;padding:15px;border-radius:12px;}
@@ -40,7 +40,7 @@
     <a href="#leads">Leads</a>
     <a href="#quote">Quotes</a>
     <a href="#contract">Contracts</a>
-    <a href="#pipeline">Pipeline</a>
+    <a href="#payments">Payments</a>
   </div>
 </div>
 
@@ -94,7 +94,7 @@
   <input id="nextFollowUp" type="date">
 
   <label>Notes</label>
-  <textarea id="notes" rows="4" placeholder="Example: Wants family photos in Edmond next month"></textarea>
+  <textarea id="notes" rows="4"></textarea>
 
   <button onclick="saveLead()">Save Lead</button>
   <button onclick="resetForm()">Cancel Edit</button>
@@ -140,14 +140,18 @@
 
 <div class="card" id="contract">
   <h2>Contract Generator</h2>
-
   <button onclick="generateContract()">Generate Contract From Quote</button>
   <button onclick="saveContract()">Save Contract</button>
   <div id="contractOutput" class="contract-box"></div>
   <button onclick="copyContract()">Copy Contract</button>
 </div>
 
-<div class="card" id="pipeline">
+<div class="card" id="payments">
+  <h2>Contracts & Payments</h2>
+  <div id="contractList">Loading contracts...</div>
+</div>
+
+<div class="card">
   <h2>Pipeline</h2>
   <p>🟡 Inquiry: <span id="inquiryCount">0</span></p>
   <p>🔵 Contacted: <span id="contactedCount">0</span></p>
@@ -162,9 +166,11 @@
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let leads = [];
+  let contracts = [];
   let currentQuote = "";
   let currentContract = "";
   let currentQuoteData = null;
+  let currentSavedQuoteId = null;
 
   function getServiceText(){
     const s = document.getElementById("service");
@@ -176,6 +182,13 @@
     if(error){ alert("Error loading leads: " + error.message); return; }
     leads = data || [];
     renderLeads();
+  }
+
+  async function loadContracts(){
+    const { data, error } = await db.from("contracts").select("*").order("created_at", { ascending:false });
+    if(error){ alert("Error loading contracts: " + error.message); return; }
+    contracts = data || [];
+    renderContracts();
   }
 
   async function saveLead(){
@@ -222,13 +235,6 @@
     document.getElementById("lastContacted").value = lead.last_contacted || "";
     document.getElementById("nextFollowUp").value = lead.next_followup || "";
     document.getElementById("notes").value = lead.notes || "";
-
-    const serviceDropdown = document.getElementById("service");
-    for(let i = 0; i < serviceDropdown.options.length; i++){
-      if(serviceDropdown.options[i].text === lead.service){
-        serviceDropdown.selectedIndex = i;
-      }
-    }
 
     document.getElementById("addlead").scrollIntoView({behavior:"smooth"});
   }
@@ -366,19 +372,19 @@ $${pricing.travelFee}
 Total:
 $${pricing.total}
 
-Deposit Required:
+Non-Refundable Deposit Required:
 $${pricing.deposit}
 
 Balance Due:
 $${pricing.balance}
 
 Terms:
-A 50% deposit is required to reserve the session date. The remaining balance is due before or on the day of the session. Final delivery timeline and gallery details will be confirmed after booking.
+A 50% non-refundable deposit is required to reserve the session date. The remaining balance is due before or on the day of the session. Final delivery timeline and gallery details will be confirmed after booking.
 
 Next Steps:
 1. Review and approve this quote.
 2. Confirm date, time, and location.
-3. Submit 50% deposit to lock in your session.
+3. Submit 50% non-refundable deposit to lock in your session.
 4. Caz Visuals will send final booking details.
 
 Thank you for choosing Caz Visuals.`;
@@ -397,6 +403,7 @@ Thank you for choosing Caz Visuals.`;
       quote_text: currentQuote
     };
 
+    currentSavedQuoteId = null;
     document.getElementById("quoteOutput").textContent = currentQuote;
   }
 
@@ -406,14 +413,15 @@ Thank you for choosing Caz Visuals.`;
       return;
     }
 
-    const { error } = await db.from("quotes").insert([currentQuoteData]);
+    const { data, error } = await db.from("quotes").insert([currentQuoteData]).select();
 
     if(error){
       alert("Error saving quote: " + error.message);
       return;
     }
 
-    alert("Quote saved to Supabase.");
+    currentSavedQuoteId = data && data[0] ? data[0].id : null;
+    alert("Quote saved.");
   }
 
   function copyQuote(){
@@ -450,7 +458,7 @@ ${currentQuoteData.location || "To be confirmed"}
 Total:
 $${currentQuoteData.total}
 
-Deposit:
+Non-Refundable Deposit:
 $${currentQuoteData.deposit}
 
 Balance Due:
@@ -459,7 +467,7 @@ $${currentQuoteData.balance}
 AGREEMENT TERMS:
 
 1. Booking and Deposit
-A 50% deposit is required to reserve the session date. The date is not officially reserved until the deposit is received.
+A 50% non-refundable deposit is required to reserve the session date. The date is not officially reserved until the deposit is received.
 
 2. Remaining Balance
 The remaining balance is due before or on the day of the session unless otherwise agreed in writing.
@@ -468,7 +476,7 @@ The remaining balance is due before or on the day of the session unless otherwis
 Client may request to reschedule due to weather, emergency, or scheduling conflict. Caz Visuals will make reasonable efforts to provide a new available date.
 
 4. Cancellation
-Deposits are generally non-refundable because they reserve time on the calendar. Caz Visuals may allow credit toward a future session at its discretion.
+The deposit is non-refundable because it reserves time on the calendar and blocks availability for other clients.
 
 5. Delivery
 Final images, videos, or galleries will be delivered within the timeline discussed with the client. Delivery time may vary based on project size.
@@ -484,7 +492,8 @@ Client is responsible for arriving on time, securing any required location permi
 
 By approving this agreement and submitting the deposit, the client agrees to the terms above.
 
-Caz Visuals`;
+Caz Visuals
+Operated by ImCaz Photography LLC`;
 
     document.getElementById("contractOutput").textContent = currentContract;
   }
@@ -497,6 +506,7 @@ Caz Visuals`;
 
     const contractData = {
       lead_id: null,
+      quote_id: currentSavedQuoteId,
       client_name: currentQuoteData.client_name,
       service: currentQuoteData.service,
       session_date: currentQuoteData.session_date || null,
@@ -506,7 +516,10 @@ Caz Visuals`;
       deposit: currentQuoteData.deposit,
       balance: currentQuoteData.balance,
       contract_text: currentContract,
-      signed: false
+      signed: false,
+      deposit_paid: false,
+      balance_paid: false,
+      payment_status: "awaiting deposit"
     };
 
     const { error } = await db.from("contracts").insert([contractData]);
@@ -516,7 +529,8 @@ Caz Visuals`;
       return;
     }
 
-    alert("Contract saved to Supabase.");
+    alert("Contract saved.");
+    loadContracts();
   }
 
   function copyContract(){
@@ -527,6 +541,68 @@ Caz Visuals`;
 
     navigator.clipboard.writeText(currentContract);
     alert("Contract copied.");
+  }
+
+  async function markSigned(id){
+    const { error } = await db.from("contracts").update({ signed:true }).eq("id", id);
+    if(error) alert("Error: " + error.message);
+    loadContracts();
+  }
+
+  async function markDepositPaid(id){
+    const contract = contracts.find(c => c.id === id);
+    if(!contract) return;
+
+    const newStatus = contract.balance_paid ? "paid in full" : "deposit paid";
+
+    const { error } = await db.from("contracts")
+      .update({ deposit_paid:true, payment_status:newStatus })
+      .eq("id", id);
+
+    if(error) alert("Error: " + error.message);
+    loadContracts();
+  }
+
+  async function markBalancePaid(id){
+    const contract = contracts.find(c => c.id === id);
+    if(!contract) return;
+
+    const { error } = await db.from("contracts")
+      .update({ balance_paid:true, payment_status:"paid in full" })
+      .eq("id", id);
+
+    if(error) alert("Error: " + error.message);
+    loadContracts();
+  }
+
+  function renderContracts(){
+    const contractList = document.getElementById("contractList");
+    contractList.innerHTML = "";
+
+    if(contracts.length === 0){
+      contractList.innerHTML = "<p>No contracts yet.</p>";
+      return;
+    }
+
+    contracts.forEach(function(contract){
+      contractList.innerHTML += `
+        <div class="contract-card">
+          <h3>${contract.client_name}</h3>
+          <p><strong>Service:</strong> ${contract.service}</p>
+          <p><strong>Total:</strong> $${contract.total}</p>
+          <p><strong>Deposit:</strong> $${contract.deposit}</p>
+          <p><strong>Balance:</strong> $${contract.balance}</p>
+          <p><strong>Signed:</strong> ${contract.signed ? "Yes" : "No"}</p>
+          <p><strong>Deposit Paid:</strong> ${contract.deposit_paid ? "Yes" : "No"}</p>
+          <p><strong>Balance Paid:</strong> ${contract.balance_paid ? "Yes" : "No"}</p>
+          <p><strong>Status:</strong> ${contract.payment_status || "awaiting deposit"}</p>
+
+          <button onclick="markSigned(${contract.id})">Mark Signed</button>
+          <button onclick="markDepositPaid(${contract.id})">Mark Deposit Paid</button>
+          <button onclick="markBalancePaid(${contract.id})">Mark Balance Paid</button>
+        </div>
+      `;
+    });
   }
 
   function renderLeads(){
@@ -580,6 +656,7 @@ Caz Visuals`;
   }
 
   loadLeads();
+  loadContracts();
 </script>
 
 </body>

@@ -4,6 +4,8 @@
   <title>Caz Visuals CRM</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     body{font-family:Arial,sans-serif;background:#111;color:white;padding:20px;margin:0;}
     h1,h2{color:#d4af37;}
@@ -55,7 +57,7 @@
 <div class="card" id="addlead">
   <h2 id="formTitle">Add New Lead</h2>
 
-  <input id="editIndex" type="hidden">
+  <input id="editId" type="hidden">
 
   <label>Name</label>
   <input id="name" type="text" placeholder="Client name">
@@ -97,12 +99,11 @@
 
   <button onclick="saveLead()">Save Lead</button>
   <button onclick="resetForm()">Cancel Edit</button>
-  <button onclick="clearLeads()">Clear All Leads</button>
 </div>
 
 <div class="card" id="leads">
   <h2>Lead Tracker</h2>
-  <div id="leadList"></div>
+  <div id="leadList">Loading leads...</div>
 </div>
 
 <div class="card" id="pipeline">
@@ -114,34 +115,41 @@
   <p>⚫ Delivered: <span id="deliveredCount">0</span></p>
 </div>
 
-<div class="card">
-  <h2>Photography Packages</h2>
-  <ul>
-    <li>Mini Session - $150</li>
-    <li>Couples Session - $300</li>
-    <li>Family Session - $350</li>
-    <li>Branding Session - $250</li>
-    <li>Events - $200/hr</li>
-  </ul>
-</div>
-
 <div class="card" id="ai">
   <h2>AI Employee</h2>
-  <p>This version creates client reply drafts using your lead data.</p>
-  <p>Supabase cloud sync is the next step after this.</p>
+  <p>Generate client reply drafts from your lead data.</p>
 </div>
 
 <script>
-  let leads = JSON.parse(localStorage.getItem("cazLeads")) || [];
+  const SUPABASE_URL = "https://pvpkjdsniwufshdmuwrc.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_Vr4QIF4f-hYW59rQiwuo6w_5Qb4oj5i";
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let leads = [];
 
   function getServiceText(){
     const s = document.getElementById("service");
     return s.options[s.selectedIndex].text;
   }
 
-  function saveLead(){
+  async function loadLeads(){
+    const { data, error } = await db
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if(error){
+      alert("Error loading leads: " + error.message);
+      return;
+    }
+
+    leads = data || [];
+    renderLeads();
+  }
+
+  async function saveLead(){
+    const editId = document.getElementById("editId").value;
     const serviceValue = document.getElementById("service").value;
-    const editIndex = document.getElementById("editIndex").value;
 
     const lead = {
       name: document.getElementById("name").value,
@@ -150,8 +158,8 @@
       service: getServiceText(),
       price: Number(serviceValue),
       status: document.getElementById("status").value,
-      lastContacted: document.getElementById("lastContacted").value,
-      nextFollowUp: document.getElementById("nextFollowUp").value,
+      last_contacted: document.getElementById("lastContacted").value || null,
+      next_followup: document.getElementById("nextFollowUp").value || null,
       notes: document.getElementById("notes").value
     };
 
@@ -160,32 +168,39 @@
       return;
     }
 
-    if(editIndex === ""){
-      leads.push(lead);
+    let result;
+
+    if(editId){
+      result = await db.from("leads").update(lead).eq("id", editId);
     } else {
-      leads[editIndex] = lead;
+      result = await db.from("leads").insert([lead]);
     }
 
-    saveAndRender();
+    if(result.error){
+      alert("Error saving lead: " + result.error.message);
+      return;
+    }
+
     resetForm();
+    loadLeads();
   }
 
-  function editLead(index){
-    const lead = leads[index];
+  function editLead(id){
+    const lead = leads.find(l => l.id === id);
+    if(!lead) return;
 
-    document.getElementById("editIndex").value = index;
+    document.getElementById("editId").value = lead.id;
     document.getElementById("formTitle").innerText = "Edit Lead";
 
-    document.getElementById("name").value = lead.name;
-    document.getElementById("phone").value = lead.phone;
-    document.getElementById("email").value = lead.email;
-    document.getElementById("status").value = lead.status;
-    document.getElementById("lastContacted").value = lead.lastContacted;
-    document.getElementById("nextFollowUp").value = lead.nextFollowUp;
-    document.getElementById("notes").value = lead.notes;
+    document.getElementById("name").value = lead.name || "";
+    document.getElementById("phone").value = lead.phone || "";
+    document.getElementById("email").value = lead.email || "";
+    document.getElementById("status").value = lead.status || "Inquiry";
+    document.getElementById("lastContacted").value = lead.last_contacted || "";
+    document.getElementById("nextFollowUp").value = lead.next_followup || "";
+    document.getElementById("notes").value = lead.notes || "";
 
     const serviceDropdown = document.getElementById("service");
-
     for(let i = 0; i < serviceDropdown.options.length; i++){
       if(serviceDropdown.options[i].text === lead.service){
         serviceDropdown.selectedIndex = i;
@@ -196,9 +211,8 @@
   }
 
   function resetForm(){
-    document.getElementById("editIndex").value = "";
+    document.getElementById("editId").value = "";
     document.getElementById("formTitle").innerText = "Add New Lead";
-
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
     document.getElementById("email").value = "";
@@ -207,34 +221,35 @@
     document.getElementById("notes").value = "";
   }
 
-  function deleteLead(index){
+  async function deleteLead(id){
     if(confirm("Delete this lead?")){
-      leads.splice(index, 1);
-      saveAndRender();
+      const { error } = await db.from("leads").delete().eq("id", id);
+
+      if(error){
+        alert("Error deleting lead: " + error.message);
+        return;
+      }
+
+      loadLeads();
     }
   }
 
-  function markBooked(index){
-    leads[index].status = "Booked";
-    saveAndRender();
+  async function markBooked(id){
+    const { error } = await db.from("leads").update({ status: "Booked" }).eq("id", id);
+    if(error) alert("Error: " + error.message);
+    loadLeads();
   }
 
-  function markContacted(index){
-    leads[index].status = "Contacted";
-    leads[index].lastContacted = new Date().toISOString().split("T")[0];
-    saveAndRender();
-  }
+  async function markContacted(id){
+    const today = new Date().toISOString().split("T")[0];
 
-  function clearLeads(){
-    if(confirm("Clear all leads?")){
-      leads = [];
-      saveAndRender();
-    }
-  }
+    const { error } = await db
+      .from("leads")
+      .update({ status: "Contacted", last_contacted: today })
+      .eq("id", id);
 
-  function saveAndRender(){
-    localStorage.setItem("cazLeads", JSON.stringify(leads));
-    renderLeads();
+    if(error) alert("Error: " + error.message);
+    loadLeads();
   }
 
   function getFollowUpStatus(date){
@@ -244,17 +259,13 @@
     const followUpDate = new Date(date);
     const diffDays = Math.ceil((followUpDate - today) / (1000 * 60 * 60 * 24));
 
-    if(diffDays < 0){
-      return "<span class='red'>Overdue</span>";
-    } else if(diffDays <= 2){
-      return "<span class='yellow'>Due soon</span>";
-    } else {
-      return "<span class='green'>On track</span>";
-    }
+    if(diffDays < 0) return "<span class='red'>Overdue</span>";
+    if(diffDays <= 2) return "<span class='yellow'>Due soon</span>";
+    return "<span class='green'>On track</span>";
   }
 
-  function generateReply(index){
-    const lead = leads[index];
+  function generateReply(id){
+    const lead = leads.find(l => l.id === id);
 
     const reply = `Hi ${lead.name},
 
@@ -273,11 +284,11 @@ Looking forward to working with you!
 
 - Caz Visuals`;
 
-    document.getElementById("reply-" + index).innerText = reply;
+    document.getElementById("reply-" + id).innerText = reply;
   }
 
-  function copyReply(index){
-    const text = document.getElementById("reply-" + index).innerText;
+  function copyReply(id){
+    const text = document.getElementById("reply-" + id).innerText;
 
     if(!text){
       alert("Generate a reply first.");
@@ -299,10 +310,10 @@ Looking forward to working with you!
     let quote = 0;
     let delivered = 0;
 
-    leads.forEach(function(lead, index){
+    leads.forEach(function(lead){
       if(lead.status === "Booked"){
         bookings++;
-        revenue += lead.price;
+        revenue += Number(lead.price || 0);
       }
 
       if(lead.status === "Inquiry") inquiry++;
@@ -315,21 +326,21 @@ Looking forward to working with you!
           <h3>${lead.name}</h3>
           <p><strong>Service:</strong> ${lead.service}</p>
           <p><strong>Status:</strong> ${lead.status}</p>
-          <p><strong>Phone:</strong> ${lead.phone}</p>
-          <p><strong>Email:</strong> ${lead.email}</p>
-          <p><strong>Last Contacted:</strong> ${lead.lastContacted || "Not set"}</p>
-          <p><strong>Next Follow-Up:</strong> ${lead.nextFollowUp || "Not set"}</p>
-          <p><strong>Follow-Up Status:</strong> ${getFollowUpStatus(lead.nextFollowUp)}</p>
+          <p><strong>Phone:</strong> ${lead.phone || ""}</p>
+          <p><strong>Email:</strong> ${lead.email || ""}</p>
+          <p><strong>Last Contacted:</strong> ${lead.last_contacted || "Not set"}</p>
+          <p><strong>Next Follow-Up:</strong> ${lead.next_followup || "Not set"}</p>
+          <p><strong>Follow-Up Status:</strong> ${getFollowUpStatus(lead.next_followup)}</p>
           <p class="small">${lead.notes || ""}</p>
 
-          <button onclick="generateReply(${index})">Generate Client Reply</button>
-          <button onclick="copyReply(${index})">Copy Reply</button>
-          <div class="reply-box" id="reply-${index}"></div>
+          <button onclick="generateReply(${lead.id})">Generate Client Reply</button>
+          <button onclick="copyReply(${lead.id})">Copy Reply</button>
+          <div class="reply-box" id="reply-${lead.id}"></div>
 
-          <button onclick="markContacted(${index})">Mark Contacted Today</button>
-          <button onclick="markBooked(${index})">Mark Booked</button>
-          <button class="edit-btn" onclick="editLead(${index})">Edit Lead</button>
-          <button class="delete-btn" onclick="deleteLead(${index})">Delete Lead</button>
+          <button onclick="markContacted(${lead.id})">Mark Contacted Today</button>
+          <button onclick="markBooked(${lead.id})">Mark Booked</button>
+          <button class="edit-btn" onclick="editLead(${lead.id})">Edit Lead</button>
+          <button class="delete-btn" onclick="deleteLead(${lead.id})">Delete Lead</button>
         </div>
       `;
     });
@@ -348,7 +359,7 @@ Looking forward to working with you!
     document.getElementById("deliveredCount").innerText = delivered;
   }
 
-  renderLeads();
+  loadLeads();
 </script>
 
 </body>

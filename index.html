@@ -5,83 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body{
-      font-family: Arial, sans-serif;
-      background:#111;
-      color:white;
-      padding:20px;
-      margin:0;
-    }
-
-    h1{
-      color:#d4af37;
-      text-align:center;
-    }
-
-    .card{
-      background:#1f1f1f;
-      padding:20px;
-      border-radius:15px;
-      margin-bottom:20px;
-    }
-
-    h2{
-      color:#d4af37;
-      margin-top:0;
-    }
-
-    .nav{
-      display:flex;
-      justify-content:space-around;
-      flex-wrap:wrap;
-    }
-
-    .nav a{
-      color:#d4af37;
-      text-decoration:none;
-      font-weight:bold;
-      margin:5px;
-    }
-
-    input, select, textarea{
-      width:100%;
-      padding:12px;
-      margin:8px 0 15px 0;
-      border-radius:8px;
-      border:none;
-      font-size:16px;
-      box-sizing:border-box;
-    }
-
-    button{
-      background:#d4af37;
-      color:#111;
-      border:none;
-      padding:12px;
-      border-radius:8px;
-      font-weight:bold;
-      width:100%;
-      font-size:16px;
-    }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-    }
-
-    th, td{
-      padding:10px;
-      text-align:left;
-      border-bottom:1px solid #333;
-    }
-
-    th{
-      color:#d4af37;
-    }
-
-    ul{
-      padding-left:20px;
-    }
+    body{font-family:Arial,sans-serif;background:#111;color:white;padding:20px;margin:0;}
+    h1,h2{color:#d4af37;}
+    h1{text-align:center;}
+    .card{background:#1f1f1f;padding:20px;border-radius:15px;margin-bottom:20px;}
+    .nav{display:flex;justify-content:space-around;flex-wrap:wrap;}
+    .nav a{color:#d4af37;text-decoration:none;font-weight:bold;margin:5px;}
+    input,select,textarea{width:100%;padding:12px;margin:8px 0 15px;border-radius:8px;border:none;font-size:16px;box-sizing:border-box;}
+    button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid #333;}
+    th{color:#d4af37;}
+    .lead-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
+    .small{color:#ccc;font-size:14px;}
   </style>
 </head>
 
@@ -91,44 +27,44 @@
 
 <div class="card">
   <div class="nav">
-    <a href="#">Dashboard</a>
-    <a href="#">Add Lead</a>
-    <a href="#">Leads</a>
-    <a href="#">Pipeline</a>
-    <a href="#">AI Employee</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#addlead">Add Lead</a>
+    <a href="#leads">Leads</a>
+    <a href="#pipeline">Pipeline</a>
+    <a href="#ai">AI Employee</a>
   </div>
 </div>
 
-<div class="card">
+<div class="card" id="dashboard">
   <h2>Business Stats</h2>
-  <p>Leads: 2</p>
-  <p>Bookings: 1</p>
-  <p>Revenue: $300</p>
+  <p>Leads: <span id="leadCount">0</span></p>
+  <p>Bookings: <span id="bookingCount">0</span></p>
+  <p>Revenue: $<span id="revenueCount">0</span></p>
 </div>
 
-<div class="card">
+<div class="card" id="addlead">
   <h2>Add New Lead</h2>
 
   <label>Name</label>
-  <input type="text" placeholder="Client name">
+  <input id="name" type="text" placeholder="Client name">
 
   <label>Phone</label>
-  <input type="tel" placeholder="Client phone number">
+  <input id="phone" type="tel" placeholder="Client phone number">
 
   <label>Email</label>
-  <input type="email" placeholder="Client email">
+  <input id="email" type="email" placeholder="Client email">
 
   <label>Service</label>
-  <select>
-    <option>Mini Session - $150</option>
-    <option>Couples Session - $300</option>
-    <option>Family Session - $350</option>
-    <option>Branding Session - $250</option>
-    <option>Events - $200/hr</option>
+  <select id="service">
+    <option value="150">Mini Session - $150</option>
+    <option value="300">Couples Session - $300</option>
+    <option value="350">Family Session - $350</option>
+    <option value="250">Branding Session - $250</option>
+    <option value="400">Events - $200/hr estimate</option>
   </select>
 
   <label>Status</label>
-  <select>
+  <select id="status">
     <option>Inquiry</option>
     <option>Contacted</option>
     <option>Quote Sent</option>
@@ -139,42 +75,24 @@
   </select>
 
   <label>Notes</label>
-  <textarea rows="4" placeholder="Example: Wants family photos in Edmond next month"></textarea>
+  <textarea id="notes" rows="4" placeholder="Example: Wants family photos in Edmond next month"></textarea>
 
-  <button>Add Lead</button>
+  <button onclick="addLead()">Add Lead</button>
+  <button onclick="clearLeads()">Clear All Leads</button>
 </div>
 
-<div class="card">
+<div class="card" id="leads">
   <h2>Lead Tracker</h2>
-
-  <table>
-    <tr>
-      <th>Name</th>
-      <th>Service</th>
-      <th>Status</th>
-    </tr>
-
-    <tr>
-      <td>Sarah Johnson</td>
-      <td>Family Session</td>
-      <td>Inquiry</td>
-    </tr>
-
-    <tr>
-      <td>Michael Smith</td>
-      <td>Branding Session</td>
-      <td>Booked</td>
-    </tr>
-  </table>
+  <div id="leadList"></div>
 </div>
 
-<div class="card">
+<div class="card" id="pipeline">
   <h2>Pipeline</h2>
-  <p>🟡 Inquiry: 1</p>
-  <p>🔵 Contacted: 0</p>
-  <p>🟣 Quote Sent: 0</p>
-  <p>🟢 Booked: 1</p>
-  <p>⚫ Delivered: 0</p>
+  <p>🟡 Inquiry: <span id="inquiryCount">0</span></p>
+  <p>🔵 Contacted: <span id="contactedCount">0</span></p>
+  <p>🟣 Quote Sent: <span id="quoteCount">0</span></p>
+  <p>🟢 Booked: <span id="bookedPipelineCount">0</span></p>
+  <p>⚫ Delivered: <span id="deliveredCount">0</span></p>
 </div>
 
 <div class="card">
@@ -188,7 +106,7 @@
   </ul>
 </div>
 
-<div class="card">
+<div class="card" id="ai">
   <h2>AI Employee Coming Next</h2>
   <ul>
     <li>Draft client replies</li>
@@ -197,6 +115,99 @@
     <li>Track follow-ups</li>
   </ul>
 </div>
+
+<script>
+  let leads = JSON.parse(localStorage.getItem("cazLeads")) || [];
+
+  function getServiceText(selectValue){
+    const serviceDropdown = document.getElementById("service");
+    return serviceDropdown.options[serviceDropdown.selectedIndex].text;
+  }
+
+  function addLead(){
+    const serviceValue = document.getElementById("service").value;
+
+    const lead = {
+      name: document.getElementById("name").value,
+      phone: document.getElementById("phone").value,
+      email: document.getElementById("email").value,
+      service: getServiceText(serviceValue),
+      price: Number(serviceValue),
+      status: document.getElementById("status").value,
+      notes: document.getElementById("notes").value
+    };
+
+    if(!lead.name){
+      alert("Add a client name first.");
+      return;
+    }
+
+    leads.push(lead);
+    localStorage.setItem("cazLeads", JSON.stringify(leads));
+
+    document.getElementById("name").value = "";
+    document.getElementById("phone").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("notes").value = "";
+
+    renderLeads();
+  }
+
+  function clearLeads(){
+    if(confirm("Clear all leads?")){
+      leads = [];
+      localStorage.removeItem("cazLeads");
+      renderLeads();
+    }
+  }
+
+  function renderLeads(){
+    const leadList = document.getElementById("leadList");
+    leadList.innerHTML = "";
+
+    let bookings = 0;
+    let revenue = 0;
+    let inquiry = 0;
+    let contacted = 0;
+    let quote = 0;
+    let delivered = 0;
+
+    leads.forEach(function(lead){
+      if(lead.status === "Booked"){
+        bookings++;
+        revenue += lead.price;
+      }
+
+      if(lead.status === "Inquiry") inquiry++;
+      if(lead.status === "Contacted") contacted++;
+      if(lead.status === "Quote Sent") quote++;
+      if(lead.status === "Delivered") delivered++;
+
+      leadList.innerHTML += `
+        <div class="lead-card">
+          <h3>${lead.name}</h3>
+          <p><strong>Service:</strong> ${lead.service}</p>
+          <p><strong>Status:</strong> ${lead.status}</p>
+          <p><strong>Phone:</strong> ${lead.phone}</p>
+          <p><strong>Email:</strong> ${lead.email}</p>
+          <p class="small">${lead.notes}</p>
+        </div>
+      `;
+    });
+
+    document.getElementById("leadCount").innerText = leads.length;
+    document.getElementById("bookingCount").innerText = bookings;
+    document.getElementById("revenueCount").innerText = revenue;
+
+    document.getElementById("inquiryCount").innerText = inquiry;
+    document.getElementById("contactedCount").innerText = contacted;
+    document.getElementById("quoteCount").innerText = quote;
+    document.getElementById("bookedPipelineCount").innerText = bookings;
+    document.getElementById("deliveredCount").innerText = delivered;
+  }
+
+  renderLeads();
+</script>
 
 </body>
 </html>

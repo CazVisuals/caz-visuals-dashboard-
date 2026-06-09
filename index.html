@@ -87,6 +87,8 @@
     <option>Contacted</option>
     <option>Quote Sent</option>
     <option>Booked</option>
+    <option>Deposit Received</option>
+    <option>Paid In Full</option>
     <option>Shot Complete</option>
     <option>Delivered</option>
     <option>Closed</option>
@@ -112,6 +114,7 @@
 
 <div class="card" id="quote">
   <h2>Quote Generator</h2>
+  <input id="quoteLeadId" type="hidden">
 
   <label>Client Name</label>
   <input id="quoteName" type="text" placeholder="Client name">
@@ -168,6 +171,8 @@
   <p>🔵 Contacted: <span id="contactedCount">0</span></p>
   <p>🟣 Quote Sent: <span id="quoteCount">0</span></p>
   <p>🟢 Booked: <span id="bookedPipelineCount">0</span></p>
+  <p>💰 Deposit Received: <span id="depositReceivedCount">0</span></p>
+  <p>✅ Paid In Full: <span id="paidInFullCount">0</span></p>
   <p>⚫ Delivered: <span id="deliveredCount">0</span></p>
 </div>
 
@@ -215,6 +220,22 @@
     }
 
     return "";
+  }
+
+  async function updateLeadStatus(leadId, status){
+    if(!leadId) return;
+
+    const { error } = await db
+      .from("leads")
+      .update({ status: status })
+      .eq("id", leadId);
+
+    if(error){
+      console.log("Lead status update error:", error.message);
+      return;
+    }
+
+    loadLeads();
   }
 
   async function loadLeads(){
@@ -291,6 +312,7 @@
     const lead = leads.find(l => l.id === id);
     if(!lead) return;
 
+    document.getElementById("quoteLeadId").value = lead.id;
     document.getElementById("quoteName").value = lead.name || "";
     setQuoteServiceByText(lead.service || "");
     document.getElementById("sessionDate").value = lead.next_followup || "";
@@ -563,7 +585,7 @@ Next Steps:
 Thank you for choosing Caz Visuals.`;
 
     currentQuoteData = {
-      lead_id: null,
+      lead_id: document.getElementById("quoteLeadId").value || null,
       client_name: name,
       service: pricing.service,
       session_date: sessionDate || null,
@@ -594,6 +616,7 @@ Thank you for choosing Caz Visuals.`;
     }
 
     currentSavedQuoteId = data && data[0] ? data[0].id : null;
+    await updateLeadStatus(currentQuoteData.lead_id, "Quote Sent");
     alert("Quote saved.");
   }
 
@@ -612,6 +635,7 @@ Thank you for choosing Caz Visuals.`;
       }
 
       currentSavedQuoteId = data && data[0] ? data[0].id : null;
+      await updateLeadStatus(currentQuoteData.lead_id, "Quote Sent");
     }
 
     const existing = await db
@@ -660,6 +684,7 @@ Thank you for choosing Caz Visuals.`;
     currentContract = contractText;
     document.getElementById("contractOutput").textContent = currentContract;
 
+    await updateLeadStatus(currentQuoteData.lead_id, "Booked");
     alert("Contract created: " + contractNumber);
     loadContracts();
   }
@@ -698,7 +723,7 @@ Thank you for choosing Caz Visuals.`;
     const contractNumber = generateContractNumber();
 
     const contractData = {
-      lead_id: null,
+      lead_id: currentQuoteData.lead_id || null,
       quote_id: currentSavedQuoteId,
       contract_number: contractNumber,
       client_name: currentQuoteData.client_name,
@@ -723,6 +748,7 @@ Thank you for choosing Caz Visuals.`;
       return;
     }
 
+    await updateLeadStatus(currentQuoteData.lead_id, "Booked");
     alert("Contract saved: " + contractNumber);
     loadContracts();
   }
@@ -754,15 +780,22 @@ Thank you for choosing Caz Visuals.`;
       .eq("id", id);
 
     if(error) alert("Error: " + error.message);
+
+    await updateLeadStatus(contract.lead_id, "Deposit Received");
     loadContracts();
   }
 
   async function markBalancePaid(id){
+    const contract = contracts.find(c => c.id === id);
+    if(!contract) return;
+
     const { error } = await db.from("contracts")
       .update({ balance_paid:true, payment_status:"paid in full" })
       .eq("id", id);
 
     if(error) alert("Error: " + error.message);
+
+    await updateLeadStatus(contract.lead_id, "Paid In Full");
     loadContracts();
   }
 
@@ -847,13 +880,15 @@ Thank you for choosing Caz Visuals.`;
     const leadList = document.getElementById("leadList");
     leadList.innerHTML = "";
 
-    let bookings = 0, revenue = 0, inquiry = 0, contacted = 0, quote = 0, delivered = 0;
+    let bookings = 0, revenue = 0, inquiry = 0, contacted = 0, quote = 0, delivered = 0, depositReceived = 0, paidInFull = 0;
 
     leads.forEach(function(lead){
       if(lead.status === "Booked"){ bookings++; revenue += Number(lead.price || 0); }
       if(lead.status === "Inquiry") inquiry++;
       if(lead.status === "Contacted") contacted++;
       if(lead.status === "Quote Sent") quote++;
+      if(lead.status === "Deposit Received") depositReceived++;
+      if(lead.status === "Paid In Full") paidInFull++;
       if(lead.status === "Delivered") delivered++;
 
       leadList.innerHTML += `
@@ -891,6 +926,8 @@ Thank you for choosing Caz Visuals.`;
     document.getElementById("contactedCount").innerText = contacted;
     document.getElementById("quoteCount").innerText = quote;
     document.getElementById("bookedPipelineCount").innerText = bookings;
+    document.getElementById("depositReceivedCount").innerText = depositReceived;
+    document.getElementById("paidInFullCount").innerText = paidInFull;
     document.getElementById("deliveredCount").innerText = delivered;
   }
 

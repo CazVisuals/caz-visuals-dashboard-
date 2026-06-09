@@ -16,7 +16,7 @@
     button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
     .delete-btn{background:#8b1e1e;color:white;}
     .edit-btn{background:#444;color:white;}
-    .lead-card,.contract-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
+    .lead-card,.contract-card,.shoot-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
     .small{color:#ccc;font-size:14px;}
     .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     .stat-box{background:#2a2a2a;padding:15px;border-radius:12px;}
@@ -41,16 +41,21 @@
     <a href="#quote">Quotes</a>
     <a href="#contract">Contracts</a>
     <a href="#payments">Payments</a>
+    <a href="#shoots">Shoots</a>
   </div>
 </div>
 
 <div class="card" id="dashboard">
-  <h2>Revenue Dashboard</h2>
+  <h2>Business Dashboard</h2>
   <div class="stats-grid">
     <div class="stat-box"><span>Total Leads</span><p id="leadCount">0</p></div>
     <div class="stat-box"><span>Bookings</span><p id="bookingCount">0</p></div>
     <div class="stat-box"><span>Booked Revenue</span><p>$<span id="revenueCount">0</span></p></div>
     <div class="stat-box"><span>Avg Booking</span><p>$<span id="avgBooking">0</span></p></div>
+    <div class="stat-box"><span>Revenue Pipeline</span><p>$<span id="pipelineRevenue">0</span></p></div>
+    <div class="stat-box"><span>Contracts Signed</span><p id="signedContracts">0</p></div>
+    <div class="stat-box"><span>Deposits Received</span><p>$<span id="depositsReceived">0</span></p></div>
+    <div class="stat-box"><span>Outstanding Balance</span><p>$<span id="outstandingBalance">0</span></p></div>
   </div>
 </div>
 
@@ -151,6 +156,11 @@
   <div id="contractList">Loading contracts...</div>
 </div>
 
+<div class="card" id="shoots">
+  <h2>Upcoming Shoots</h2>
+  <div id="shootList">Loading shoots...</div>
+</div>
+
 <div class="card">
   <h2>Pipeline</h2>
   <p>🟡 Inquiry: <span id="inquiryCount">0</span></p>
@@ -189,6 +199,8 @@
     if(error){ alert("Error loading contracts: " + error.message); return; }
     contracts = data || [];
     renderContracts();
+    renderShoots();
+    renderBusinessStats();
   }
 
   async function saveLead(){
@@ -564,15 +576,64 @@ Operated by ImCaz Photography LLC`;
   }
 
   async function markBalancePaid(id){
-    const contract = contracts.find(c => c.id === id);
-    if(!contract) return;
-
     const { error } = await db.from("contracts")
       .update({ balance_paid:true, payment_status:"paid in full" })
       .eq("id", id);
 
     if(error) alert("Error: " + error.message);
     loadContracts();
+  }
+
+  function renderBusinessStats(){
+    let pipelineRevenue = 0;
+    let signedCount = 0;
+    let depositsReceived = 0;
+    let outstanding = 0;
+
+    contracts.forEach(function(c){
+      pipelineRevenue += Number(c.total || 0);
+
+      if(c.signed) signedCount++;
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstanding += Number(c.balance || 0);
+      }
+    });
+
+    document.getElementById("pipelineRevenue").innerText = pipelineRevenue;
+    document.getElementById("signedContracts").innerText = signedCount;
+    document.getElementById("depositsReceived").innerText = depositsReceived;
+    document.getElementById("outstandingBalance").innerText = outstanding;
+  }
+
+  function renderShoots(){
+    const shootList = document.getElementById("shootList");
+    shootList.innerHTML = "";
+
+    const upcoming = contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
+
+    if(upcoming.length === 0){
+      shootList.innerHTML = "<p>No upcoming shoots yet.</p>";
+      return;
+    }
+
+    upcoming.forEach(function(c){
+      shootList.innerHTML += `
+        <div class="shoot-card">
+          <h3>${c.session_date}</h3>
+          <p><strong>Client:</strong> ${c.client_name}</p>
+          <p><strong>Service:</strong> ${c.service}</p>
+          <p><strong>Location:</strong> ${c.location || "To be confirmed"}</p>
+          <p><strong>Status:</strong> ${c.payment_status || "awaiting deposit"}</p>
+        </div>
+      `;
+    });
   }
 
   function renderContracts(){

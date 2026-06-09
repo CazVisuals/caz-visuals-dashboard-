@@ -25,7 +25,7 @@
     .green{color:#00cc66;font-weight:bold;}
     .yellow{color:#ffd633;font-weight:bold;}
     .red{color:#ff4d4d;font-weight:bold;}
-    .reply-box,.quote-box{background:#111;padding:15px;border-radius:10px;white-space:pre-wrap;margin-top:10px;}
+    .reply-box,.quote-box,.contract-box{background:#111;padding:15px;border-radius:10px;white-space:pre-wrap;margin-top:10px;}
   </style>
 </head>
 
@@ -39,8 +39,8 @@
     <a href="#addlead">Add Lead</a>
     <a href="#leads">Leads</a>
     <a href="#quote">Quotes</a>
+    <a href="#contract">Contracts</a>
     <a href="#pipeline">Pipeline</a>
-    <a href="#ai">AI</a>
   </div>
 </div>
 
@@ -73,7 +73,7 @@
     <option value="300">Couples Session - $300</option>
     <option value="350">Family Session - $350</option>
     <option value="250">Branding Session - $250</option>
-    <option value="400">Events - $200/hr estimate</option>
+    <option value="200">Events - $200/hr</option>
   </select>
 
   <label>Status</label>
@@ -120,6 +120,9 @@
     <option>Events - $200/hr</option>
   </select>
 
+  <label>Event Hours</label>
+  <input id="eventHours" type="number" value="1">
+
   <label>Session Date</label>
   <input id="sessionDate" type="date">
 
@@ -130,8 +133,18 @@
   <input id="travelFee" type="number" value="0">
 
   <button onclick="generateQuote()">Generate Quote</button>
+  <button onclick="saveQuote()">Save Quote</button>
   <div id="quoteOutput" class="quote-box"></div>
   <button onclick="copyQuote()">Copy Quote</button>
+</div>
+
+<div class="card" id="contract">
+  <h2>Contract Generator</h2>
+
+  <button onclick="generateContract()">Generate Contract From Quote</button>
+  <button onclick="saveContract()">Save Contract</button>
+  <div id="contractOutput" class="contract-box"></div>
+  <button onclick="copyContract()">Copy Contract</button>
 </div>
 
 <div class="card" id="pipeline">
@@ -143,11 +156,6 @@
   <p>⚫ Delivered: <span id="deliveredCount">0</span></p>
 </div>
 
-<div class="card" id="ai">
-  <h2>AI Employee</h2>
-  <p>Generate replies and quotes from your lead data.</p>
-</div>
-
 <script>
   const SUPABASE_URL = "https://pvpkjdsniwufshdmuwrc.supabase.co";
   const SUPABASE_KEY = "sb_publishable_Vr4QIF4f-hYW59rQiwuo6w_5Qb4oj5i";
@@ -155,6 +163,8 @@
 
   let leads = [];
   let currentQuote = "";
+  let currentContract = "";
+  let currentQuoteData = null;
 
   function getServiceText(){
     const s = document.getElementById("service");
@@ -279,8 +289,6 @@ Here are the next steps:
 2. I will send over the final details.
 3. Once confirmed, we can lock in your session.
 
-If you have any specific ideas, outfits, locations, or inspiration, feel free to send them over.
-
 Looking forward to working with you!
 
 - Caz Visuals`;
@@ -295,24 +303,42 @@ Looking forward to working with you!
     alert("Reply copied.");
   }
 
-  function generateQuote(){
-    const name = document.getElementById("quoteName").value;
+  function getQuotePricing(){
     const service = document.getElementById("quoteService").value;
-    const sessionDate = document.getElementById("sessionDate").value;
-    const location = document.getElementById("sessionLocation").value;
-    const travelFee = Number(document.getElementById("travelFee").value);
+    const travelFee = Number(document.getElementById("travelFee").value || 0);
+    const hours = Number(document.getElementById("eventHours").value || 1);
 
     let servicePrice = 0;
-    if(service.includes("$150")) servicePrice = 150;
-    if(service.includes("$300")) servicePrice = 300;
-    if(service.includes("$350")) servicePrice = 350;
-    if(service.includes("$250")) servicePrice = 250;
-    if(service.includes("$200/hr")) servicePrice = 200;
+
+    if(service.includes("Events")){
+      servicePrice = 200 * hours;
+    } else if(service.includes("$150")){
+      servicePrice = 150;
+    } else if(service.includes("$300")){
+      servicePrice = 300;
+    } else if(service.includes("$350")){
+      servicePrice = 350;
+    } else if(service.includes("$250")){
+      servicePrice = 250;
+    }
 
     const total = servicePrice + travelFee;
     const deposit = Math.round(total * 0.50);
     const balance = total - deposit;
+
+    return { service, servicePrice, travelFee, hours, total, deposit, balance };
+  }
+
+  function generateQuote(){
+    const name = document.getElementById("quoteName").value;
+    const sessionDate = document.getElementById("sessionDate").value;
+    const location = document.getElementById("sessionLocation").value;
+    const pricing = getQuotePricing();
     const quoteNumber = "CV-" + Date.now();
+
+    const hoursLine = pricing.service.includes("Events")
+      ? `Event Hours:\n${pricing.hours} hour(s)\n\nHourly Rate:\n$200/hr\n\n`
+      : "";
 
     currentQuote =
 `CAZ VISUALS PROPOSAL
@@ -329,22 +355,22 @@ Location:
 ${location || "To be confirmed"}
 
 Service:
-${service}
+${pricing.service}
 
-Service Price:
-$${servicePrice}
+${hoursLine}Service Price:
+$${pricing.servicePrice}
 
 Travel Fee:
-$${travelFee}
+$${pricing.travelFee}
 
 Total:
-$${total}
+$${pricing.total}
 
 Deposit Required:
-$${deposit}
+$${pricing.deposit}
 
 Balance Due:
-$${balance}
+$${pricing.balance}
 
 Terms:
 A 50% deposit is required to reserve the session date. The remaining balance is due before or on the day of the session. Final delivery timeline and gallery details will be confirmed after booking.
@@ -357,13 +383,150 @@ Next Steps:
 
 Thank you for choosing Caz Visuals.`;
 
+    currentQuoteData = {
+      lead_id: null,
+      client_name: name,
+      service: pricing.service,
+      session_date: sessionDate || null,
+      location: location || "To be confirmed",
+      hours: pricing.service.includes("Events") ? pricing.hours : null,
+      travel_fee: pricing.travelFee,
+      total: pricing.total,
+      deposit: pricing.deposit,
+      balance: pricing.balance,
+      quote_text: currentQuote
+    };
+
     document.getElementById("quoteOutput").textContent = currentQuote;
+  }
+
+  async function saveQuote(){
+    if(!currentQuoteData){
+      alert("Generate a quote first.");
+      return;
+    }
+
+    const { error } = await db.from("quotes").insert([currentQuoteData]);
+
+    if(error){
+      alert("Error saving quote: " + error.message);
+      return;
+    }
+
+    alert("Quote saved to Supabase.");
   }
 
   function copyQuote(){
     if(!currentQuote){ alert("Generate a quote first."); return; }
     navigator.clipboard.writeText(currentQuote);
     alert("Quote copied.");
+  }
+
+  function generateContract(){
+    if(!currentQuoteData){
+      alert("Generate a quote first.");
+      return;
+    }
+
+    const hoursLine = currentQuoteData.hours
+      ? `Event Coverage:\n${currentQuoteData.hours} hour(s) at $200/hr\n\n`
+      : "";
+
+    currentContract =
+`CAZ VISUALS PHOTOGRAPHY / VIDEOGRAPHY AGREEMENT
+
+Client:
+${currentQuoteData.client_name}
+
+Service:
+${currentQuoteData.service}
+
+${hoursLine}Session Date:
+${currentQuoteData.session_date || "To be confirmed"}
+
+Location:
+${currentQuoteData.location || "To be confirmed"}
+
+Total:
+$${currentQuoteData.total}
+
+Deposit:
+$${currentQuoteData.deposit}
+
+Balance Due:
+$${currentQuoteData.balance}
+
+AGREEMENT TERMS:
+
+1. Booking and Deposit
+A 50% deposit is required to reserve the session date. The date is not officially reserved until the deposit is received.
+
+2. Remaining Balance
+The remaining balance is due before or on the day of the session unless otherwise agreed in writing.
+
+3. Rescheduling
+Client may request to reschedule due to weather, emergency, or scheduling conflict. Caz Visuals will make reasonable efforts to provide a new available date.
+
+4. Cancellation
+Deposits are generally non-refundable because they reserve time on the calendar. Caz Visuals may allow credit toward a future session at its discretion.
+
+5. Delivery
+Final images, videos, or galleries will be delivered within the timeline discussed with the client. Delivery time may vary based on project size.
+
+6. Creative Rights
+Caz Visuals retains copyright ownership of images and videos created. Client receives permission to use final delivered content for personal, promotional, or agreed business use.
+
+7. Portfolio Use
+Caz Visuals may use final images or videos for portfolio, website, social media, and promotional purposes unless the client requests privacy in writing.
+
+8. Client Responsibility
+Client is responsible for arriving on time, securing any required location permissions, and communicating specific needs before the session.
+
+By approving this agreement and submitting the deposit, the client agrees to the terms above.
+
+Caz Visuals`;
+
+    document.getElementById("contractOutput").textContent = currentContract;
+  }
+
+  async function saveContract(){
+    if(!currentContract || !currentQuoteData){
+      alert("Generate a contract first.");
+      return;
+    }
+
+    const contractData = {
+      lead_id: null,
+      client_name: currentQuoteData.client_name,
+      service: currentQuoteData.service,
+      session_date: currentQuoteData.session_date || null,
+      location: currentQuoteData.location || "To be confirmed",
+      hours: currentQuoteData.hours || null,
+      total: currentQuoteData.total,
+      deposit: currentQuoteData.deposit,
+      balance: currentQuoteData.balance,
+      contract_text: currentContract,
+      signed: false
+    };
+
+    const { error } = await db.from("contracts").insert([contractData]);
+
+    if(error){
+      alert("Error saving contract: " + error.message);
+      return;
+    }
+
+    alert("Contract saved to Supabase.");
+  }
+
+  function copyContract(){
+    if(!currentContract){
+      alert("Generate a contract first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(currentContract);
+    alert("Contract copied.");
   }
 
   function renderLeads(){

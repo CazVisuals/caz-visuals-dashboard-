@@ -14,6 +14,7 @@
     input,select,textarea{width:100%;padding:12px;margin:8px 0 15px;border-radius:8px;border:none;font-size:16px;box-sizing:border-box;}
     button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
     .delete-btn{background:#8b1e1e;color:white;}
+    .edit-btn{background:#444;color:white;}
     .lead-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
     .small{color:#ccc;font-size:14px;}
     .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -23,6 +24,7 @@
     .green{color:#00cc66;font-weight:bold;}
     .yellow{color:#ffd633;font-weight:bold;}
     .red{color:#ff4d4d;font-weight:bold;}
+    .reply-box{background:#111;padding:15px;border-radius:10px;white-space:pre-wrap;margin-top:10px;}
   </style>
 </head>
 
@@ -51,7 +53,9 @@
 </div>
 
 <div class="card" id="addlead">
-  <h2>Add New Lead</h2>
+  <h2 id="formTitle">Add New Lead</h2>
+
+  <input id="editIndex" type="hidden">
 
   <label>Name</label>
   <input id="name" type="text" placeholder="Client name">
@@ -91,7 +95,8 @@
   <label>Notes</label>
   <textarea id="notes" rows="4" placeholder="Example: Wants family photos in Edmond next month"></textarea>
 
-  <button onclick="addLead()">Add Lead</button>
+  <button onclick="saveLead()">Save Lead</button>
+  <button onclick="resetForm()">Cancel Edit</button>
   <button onclick="clearLeads()">Clear All Leads</button>
 </div>
 
@@ -121,25 +126,22 @@
 </div>
 
 <div class="card" id="ai">
-  <h2>AI Employee Coming Next</h2>
-  <ul>
-    <li>Draft client replies</li>
-    <li>Create quotes</li>
-    <li>Generate captions</li>
-    <li>Track follow-ups</li>
-  </ul>
+  <h2>AI Employee</h2>
+  <p>This version creates client reply drafts using your lead data.</p>
+  <p>Supabase cloud sync is the next step after this.</p>
 </div>
 
 <script>
   let leads = JSON.parse(localStorage.getItem("cazLeads")) || [];
 
   function getServiceText(){
-    const serviceDropdown = document.getElementById("service");
-    return serviceDropdown.options[serviceDropdown.selectedIndex].text;
+    const s = document.getElementById("service");
+    return s.options[s.selectedIndex].text;
   }
 
-  function addLead(){
+  function saveLead(){
     const serviceValue = document.getElementById("service").value;
+    const editIndex = document.getElementById("editIndex").value;
 
     const lead = {
       name: document.getElementById("name").value,
@@ -158,8 +160,44 @@
       return;
     }
 
-    leads.push(lead);
+    if(editIndex === ""){
+      leads.push(lead);
+    } else {
+      leads[editIndex] = lead;
+    }
+
     saveAndRender();
+    resetForm();
+  }
+
+  function editLead(index){
+    const lead = leads[index];
+
+    document.getElementById("editIndex").value = index;
+    document.getElementById("formTitle").innerText = "Edit Lead";
+
+    document.getElementById("name").value = lead.name;
+    document.getElementById("phone").value = lead.phone;
+    document.getElementById("email").value = lead.email;
+    document.getElementById("status").value = lead.status;
+    document.getElementById("lastContacted").value = lead.lastContacted;
+    document.getElementById("nextFollowUp").value = lead.nextFollowUp;
+    document.getElementById("notes").value = lead.notes;
+
+    const serviceDropdown = document.getElementById("service");
+
+    for(let i = 0; i < serviceDropdown.options.length; i++){
+      if(serviceDropdown.options[i].text === lead.service){
+        serviceDropdown.selectedIndex = i;
+      }
+    }
+
+    document.getElementById("addlead").scrollIntoView({behavior:"smooth"});
+  }
+
+  function resetForm(){
+    document.getElementById("editIndex").value = "";
+    document.getElementById("formTitle").innerText = "Add New Lead";
 
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
@@ -215,6 +253,41 @@
     }
   }
 
+  function generateReply(index){
+    const lead = leads[index];
+
+    const reply = `Hi ${lead.name},
+
+Thank you for reaching out to Caz Visuals.
+
+I'd love to help with your ${lead.service}. Based on what you shared, this would be a great fit for your session.
+
+Here are the next steps:
+1. Confirm your preferred date and location.
+2. I will send over the final details.
+3. Once confirmed, we can lock in your session.
+
+If you have any specific ideas, outfits, locations, or inspiration, feel free to send them over.
+
+Looking forward to working with you!
+
+- Caz Visuals`;
+
+    document.getElementById("reply-" + index).innerText = reply;
+  }
+
+  function copyReply(index){
+    const text = document.getElementById("reply-" + index).innerText;
+
+    if(!text){
+      alert("Generate a reply first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Reply copied.");
+  }
+
   function renderLeads(){
     const leadList = document.getElementById("leadList");
     leadList.innerHTML = "";
@@ -247,9 +320,15 @@
           <p><strong>Last Contacted:</strong> ${lead.lastContacted || "Not set"}</p>
           <p><strong>Next Follow-Up:</strong> ${lead.nextFollowUp || "Not set"}</p>
           <p><strong>Follow-Up Status:</strong> ${getFollowUpStatus(lead.nextFollowUp)}</p>
-          <p class="small">${lead.notes}</p>
+          <p class="small">${lead.notes || ""}</p>
+
+          <button onclick="generateReply(${index})">Generate Client Reply</button>
+          <button onclick="copyReply(${index})">Copy Reply</button>
+          <div class="reply-box" id="reply-${index}"></div>
+
           <button onclick="markContacted(${index})">Mark Contacted Today</button>
           <button onclick="markBooked(${index})">Mark Booked</button>
+          <button class="edit-btn" onclick="editLead(${index})">Edit Lead</button>
           <button class="delete-btn" onclick="deleteLead(${index})">Delete Lead</button>
         </div>
       `;

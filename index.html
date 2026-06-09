@@ -38,6 +38,7 @@
     <a href="#dashboard">Dashboard</a>
     <a href="#addlead">Add Lead</a>
     <a href="#leads">Leads</a>
+    <a href="#clientDetail">Client View</a>
     <a href="#quote">Quotes</a>
     <a href="#contract">Contracts</a>
     <a href="#payments">Payments</a>
@@ -110,6 +111,14 @@
 <div class="card" id="leads">
   <h2>Lead Tracker</h2>
   <div id="leadList">Loading leads...</div>
+</div>
+
+
+<div class="card" id="clientDetail">
+  <h2>Client Detail View</h2>
+  <div id="clientDetailBox">
+    <p>Select a client from the Lead Tracker to view their details.</p>
+  </div>
 </div>
 
 <div class="card" id="quote">
@@ -799,6 +808,63 @@ Thank you for choosing Caz Visuals.`;
     loadContracts();
   }
 
+
+  function viewClient(id){
+    const lead = leads.find(l => l.id === id);
+    if(!lead) return;
+
+    const clientContracts = contracts.filter(c => 
+      (c.lead_id && String(c.lead_id) === String(lead.id)) ||
+      (c.client_name && lead.name && c.client_name.toLowerCase() === lead.name.toLowerCase())
+    );
+
+    let contractHtml = "";
+
+    if(clientContracts.length === 0){
+      contractHtml = "<p>No contracts found for this client yet.</p>";
+    } else {
+      clientContracts.forEach(function(c){
+        contractHtml += `
+          <div class="contract-card">
+            <p><strong>Contract #:</strong> ${c.contract_number || "Not assigned"}</p>
+            <p><strong>Service:</strong> ${c.service}</p>
+            <p><strong>Session Date:</strong> ${c.session_date || "Not set"}</p>
+            <p><strong>Location:</strong> ${c.location || "Not set"}</p>
+            <p><strong>Total:</strong> $${c.total}</p>
+            <p><strong>Deposit:</strong> $${c.deposit}</p>
+            <p><strong>Balance:</strong> $${c.balance}</p>
+            <p><strong>Signed:</strong> ${c.signed ? "Yes" : "No"}</p>
+            <p><strong>Deposit Paid:</strong> ${c.deposit_paid ? "Yes" : "No"}</p>
+            <p><strong>Balance Paid:</strong> ${c.balance_paid ? "Yes" : "No"}</p>
+            <p><strong>Payment Status:</strong> ${c.payment_status || "awaiting deposit"}</p>
+          </div>
+        `;
+      });
+    }
+
+    document.getElementById("clientDetailBox").innerHTML = `
+      <div class="lead-card">
+        <h3>${lead.name}</h3>
+        <p><strong>Status:</strong> ${lead.status}</p>
+        <p><strong>Service:</strong> ${lead.service}</p>
+        <p><strong>Phone:</strong> ${lead.phone || ""}</p>
+        <p><strong>Email:</strong> ${lead.email || ""}</p>
+        <p><strong>Last Contacted:</strong> ${lead.last_contacted || "Not set"}</p>
+        <p><strong>Next Follow-Up:</strong> ${lead.next_followup || "Not set"}</p>
+        <p><strong>Notes:</strong></p>
+        <p class="small">${lead.notes || "No notes yet."}</p>
+
+        <button onclick="generateQuoteFromLead(${lead.id})">Generate Quote From This Client</button>
+        <button onclick="editLead(${lead.id})">Edit Client</button>
+      </div>
+
+      <h3 style="color:#d4af37;">Contracts & Payments</h3>
+      ${contractHtml}
+    `;
+
+    document.getElementById("clientDetail").scrollIntoView({behavior:"smooth"});
+  }
+
   function renderBusinessStats(){
     let pipelineRevenue = 0;
     let signedCount = 0;
@@ -903,6 +969,7 @@ Thank you for choosing Caz Visuals.`;
           <p><strong>Follow-Up Status:</strong> ${getFollowUpStatus(lead.next_followup)}</p>
           <p class="small">${lead.notes || ""}</p>
 
+          <button onclick="viewClient(${lead.id})">View Client</button>
           <button onclick="generateQuoteFromLead(${lead.id})">Generate Quote From Lead</button>
           <button onclick="generateReply(${lead.id})">Generate Client Reply</button>
           <button onclick="copyReply(${lead.id})">Copy Reply</button>

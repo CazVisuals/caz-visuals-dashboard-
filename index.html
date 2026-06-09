@@ -20,6 +20,9 @@
     .stat-box{background:#2a2a2a;padding:15px;border-radius:12px;}
     .stat-box p{margin:5px 0;font-size:22px;font-weight:bold;}
     .stat-box span{color:#d4af37;font-size:14px;}
+    .green{color:#00cc66;font-weight:bold;}
+    .yellow{color:#ffd633;font-weight:bold;}
+    .red{color:#ff4d4d;font-weight:bold;}
   </style>
 </head>
 
@@ -40,22 +43,10 @@
 <div class="card" id="dashboard">
   <h2>Revenue Dashboard</h2>
   <div class="stats-grid">
-    <div class="stat-box">
-      <span>Total Leads</span>
-      <p id="leadCount">0</p>
-    </div>
-    <div class="stat-box">
-      <span>Bookings</span>
-      <p id="bookingCount">0</p>
-    </div>
-    <div class="stat-box">
-      <span>Booked Revenue</span>
-      <p>$<span id="revenueCount">0</span></p>
-    </div>
-    <div class="stat-box">
-      <span>Avg Booking</span>
-      <p>$<span id="avgBooking">0</span></p>
-    </div>
+    <div class="stat-box"><span>Total Leads</span><p id="leadCount">0</p></div>
+    <div class="stat-box"><span>Bookings</span><p id="bookingCount">0</p></div>
+    <div class="stat-box"><span>Booked Revenue</span><p>$<span id="revenueCount">0</span></p></div>
+    <div class="stat-box"><span>Avg Booking</span><p>$<span id="avgBooking">0</span></p></div>
   </div>
 </div>
 
@@ -90,6 +81,12 @@
     <option>Delivered</option>
     <option>Closed</option>
   </select>
+
+  <label>Last Contacted</label>
+  <input id="lastContacted" type="date">
+
+  <label>Next Follow-Up</label>
+  <input id="nextFollowUp" type="date">
 
   <label>Notes</label>
   <textarea id="notes" rows="4" placeholder="Example: Wants family photos in Edmond next month"></textarea>
@@ -151,6 +148,8 @@
       service: getServiceText(),
       price: Number(serviceValue),
       status: document.getElementById("status").value,
+      lastContacted: document.getElementById("lastContacted").value,
+      nextFollowUp: document.getElementById("nextFollowUp").value,
       notes: document.getElementById("notes").value
     };
 
@@ -165,6 +164,8 @@
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
     document.getElementById("email").value = "";
+    document.getElementById("lastContacted").value = "";
+    document.getElementById("nextFollowUp").value = "";
     document.getElementById("notes").value = "";
   }
 
@@ -173,6 +174,17 @@
       leads.splice(index, 1);
       saveAndRender();
     }
+  }
+
+  function markBooked(index){
+    leads[index].status = "Booked";
+    saveAndRender();
+  }
+
+  function markContacted(index){
+    leads[index].status = "Contacted";
+    leads[index].lastContacted = new Date().toISOString().split("T")[0];
+    saveAndRender();
   }
 
   function clearLeads(){
@@ -185,6 +197,22 @@
   function saveAndRender(){
     localStorage.setItem("cazLeads", JSON.stringify(leads));
     renderLeads();
+  }
+
+  function getFollowUpStatus(date){
+    if(!date) return "<span class='yellow'>No follow-up date set</span>";
+
+    const today = new Date();
+    const followUpDate = new Date(date);
+    const diffDays = Math.ceil((followUpDate - today) / (1000 * 60 * 60 * 24));
+
+    if(diffDays < 0){
+      return "<span class='red'>Overdue</span>";
+    } else if(diffDays <= 2){
+      return "<span class='yellow'>Due soon</span>";
+    } else {
+      return "<span class='green'>On track</span>";
+    }
   }
 
   function renderLeads(){
@@ -216,7 +244,12 @@
           <p><strong>Status:</strong> ${lead.status}</p>
           <p><strong>Phone:</strong> ${lead.phone}</p>
           <p><strong>Email:</strong> ${lead.email}</p>
+          <p><strong>Last Contacted:</strong> ${lead.lastContacted || "Not set"}</p>
+          <p><strong>Next Follow-Up:</strong> ${lead.nextFollowUp || "Not set"}</p>
+          <p><strong>Follow-Up Status:</strong> ${getFollowUpStatus(lead.nextFollowUp)}</p>
           <p class="small">${lead.notes}</p>
+          <button onclick="markContacted(${index})">Mark Contacted Today</button>
+          <button onclick="markBooked(${index})">Mark Booked</button>
           <button class="delete-btn" onclick="deleteLead(${index})">Delete Lead</button>
         </div>
       `;

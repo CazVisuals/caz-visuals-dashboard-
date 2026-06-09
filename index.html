@@ -3,26 +3,45 @@
 <head>
   <title>Caz Visuals Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
     body{
-      font-family:Arial,sans-serif;
+      font-family: Arial, sans-serif;
       background:#111;
       color:white;
       padding:20px;
-    }
-
-    .card{
-      background:#1f1f1f;
-      padding:15px;
-      border-radius:12px;
-      margin-bottom:15px;
+      margin:0;
     }
 
     h1{
       color:#d4af37;
+      text-align:center;
+    }
+
+    .card{
+      background:#1f1f1f;
+      padding:20px;
+      border-radius:15px;
+      margin-bottom:20px;
     }
 
     h2{
+      color:#d4af37;
+      margin-top:0;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    th, td{
+      padding:10px;
+      text-align:left;
+      border-bottom:1px solid #333;
+    }
+
+    th{
       color:#d4af37;
     }
 
@@ -38,13 +57,39 @@
 
 <div class="card">
   <h2>Business Stats</h2>
-  <p>Leads: 0</p>
-  <p>Bookings: 0</p>
-  <p>Revenue: $0</p>
+
+  <p>Leads: 2</p>
+  <p>Bookings: 1</p>
+  <p>Revenue: $300</p>
+</div>
+
+<div class="card">
+  <h2>Lead Tracker</h2>
+
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Service</th>
+      <th>Status</th>
+    </tr>
+
+    <tr>
+      <td>Sarah Johnson</td>
+      <td>Family Session</td>
+      <td>Inquiry</td>
+    </tr>
+
+    <tr>
+      <td>Michael Smith</td>
+      <td>Branding Session</td>
+      <td>Booked</td>
+    </tr>
+  </table>
 </div>
 
 <div class="card">
   <h2>Photography Packages</h2>
+
   <ul>
     <li>Mini Session - $150</li>
     <li>Couples Session - $300</li>
@@ -56,6 +101,7 @@
 
 <div class="card">
   <h2>AI Employee Tasks</h2>
+
   <ul>
     <li>Reply to new leads</li>
     <li>Create quotes</li>

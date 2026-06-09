@@ -3,7 +3,6 @@
 <head>
   <title>Caz Visuals CRM</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -26,7 +25,7 @@
     .green{color:#00cc66;font-weight:bold;}
     .yellow{color:#ffd633;font-weight:bold;}
     .red{color:#ff4d4d;font-weight:bold;}
-    .reply-box{background:#111;padding:15px;border-radius:10px;white-space:pre-wrap;margin-top:10px;}
+    .reply-box,.quote-box{background:#111;padding:15px;border-radius:10px;white-space:pre-wrap;margin-top:10px;}
   </style>
 </head>
 
@@ -39,8 +38,9 @@
     <a href="#dashboard">Dashboard</a>
     <a href="#addlead">Add Lead</a>
     <a href="#leads">Leads</a>
+    <a href="#quote">Quotes</a>
     <a href="#pipeline">Pipeline</a>
-    <a href="#ai">AI Employee</a>
+    <a href="#ai">AI</a>
   </div>
 </div>
 
@@ -56,7 +56,6 @@
 
 <div class="card" id="addlead">
   <h2 id="formTitle">Add New Lead</h2>
-
   <input id="editId" type="hidden">
 
   <label>Name</label>
@@ -106,6 +105,29 @@
   <div id="leadList">Loading leads...</div>
 </div>
 
+<div class="card" id="quote">
+  <h2>Quote Generator</h2>
+
+  <label>Client Name</label>
+  <input id="quoteName" type="text" placeholder="Client name">
+
+  <label>Service</label>
+  <select id="quoteService">
+    <option>Mini Session - $150</option>
+    <option>Couples Session - $300</option>
+    <option>Family Session - $350</option>
+    <option>Branding Session - $250</option>
+    <option>Events - $200/hr</option>
+  </select>
+
+  <label>Travel Fee ($)</label>
+  <input id="travelFee" type="number" value="0">
+
+  <button onclick="generateQuote()">Generate Quote</button>
+  <div id="quoteOutput" class="quote-box"></div>
+  <button onclick="copyQuote()">Copy Quote</button>
+</div>
+
 <div class="card" id="pipeline">
   <h2>Pipeline</h2>
   <p>🟡 Inquiry: <span id="inquiryCount">0</span></p>
@@ -117,7 +139,7 @@
 
 <div class="card" id="ai">
   <h2>AI Employee</h2>
-  <p>Generate client reply drafts from your lead data.</p>
+  <p>Generate replies and quotes from your lead data.</p>
 </div>
 
 <script>
@@ -126,6 +148,7 @@
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let leads = [];
+  let currentQuote = "";
 
   function getServiceText(){
     const s = document.getElementById("service");
@@ -133,10 +156,7 @@
   }
 
   async function loadLeads(){
-    const { data, error } = await db
-      .from("leads")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data, error } = await db.from("leads").select("*").order("created_at", { ascending:false });
 
     if(error){
       alert("Error loading leads: " + error.message);
@@ -191,7 +211,6 @@
 
     document.getElementById("editId").value = lead.id;
     document.getElementById("formTitle").innerText = "Edit Lead";
-
     document.getElementById("name").value = lead.name || "";
     document.getElementById("phone").value = lead.phone || "";
     document.getElementById("email").value = lead.email || "";
@@ -224,30 +243,20 @@
   async function deleteLead(id){
     if(confirm("Delete this lead?")){
       const { error } = await db.from("leads").delete().eq("id", id);
-
-      if(error){
-        alert("Error deleting lead: " + error.message);
-        return;
-      }
-
+      if(error) alert("Error deleting lead: " + error.message);
       loadLeads();
     }
   }
 
   async function markBooked(id){
-    const { error } = await db.from("leads").update({ status: "Booked" }).eq("id", id);
+    const { error } = await db.from("leads").update({ status:"Booked" }).eq("id", id);
     if(error) alert("Error: " + error.message);
     loadLeads();
   }
 
   async function markContacted(id){
     const today = new Date().toISOString().split("T")[0];
-
-    const { error } = await db
-      .from("leads")
-      .update({ status: "Contacted", last_contacted: today })
-      .eq("id", id);
-
+    const { error } = await db.from("leads").update({ status:"Contacted", last_contacted:today }).eq("id", id);
     if(error) alert("Error: " + error.message);
     loadLeads();
   }
@@ -297,6 +306,58 @@ Looking forward to working with you!
 
     navigator.clipboard.writeText(text);
     alert("Reply copied.");
+  }
+
+  function generateQuote(){
+    const name = document.getElementById("quoteName").value;
+    const service = document.getElementById("quoteService").value;
+    const travelFee = Number(document.getElementById("travelFee").value);
+
+    let servicePrice = 0;
+
+    if(service.includes("$150")) servicePrice = 150;
+    if(service.includes("$300")) servicePrice = 300;
+    if(service.includes("$350")) servicePrice = 350;
+    if(service.includes("$250")) servicePrice = 250;
+    if(service.includes("$200/hr")) servicePrice = 200;
+
+    const total = servicePrice + travelFee;
+    const quoteNumber = "CV-" + Date.now();
+
+    currentQuote =
+`Caz Visuals Quote
+
+Quote #: ${quoteNumber}
+
+Client: ${name}
+
+Service:
+${service}
+
+Travel Fee:
+$${travelFee}
+
+Total:
+$${total}
+
+Thank you for choosing Caz Visuals.
+
+Next Steps:
+1. Review and approve this quote.
+2. Confirm the date, time, and location.
+3. Caz Visuals will send final booking details.`;
+
+    document.getElementById("quoteOutput").textContent = currentQuote;
+  }
+
+  function copyQuote(){
+    if(!currentQuote){
+      alert("Generate a quote first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(currentQuote);
+    alert("Quote copied.");
   }
 
   function renderLeads(){
@@ -351,7 +412,6 @@ Looking forward to working with you!
     document.getElementById("bookingCount").innerText = bookings;
     document.getElementById("revenueCount").innerText = revenue;
     document.getElementById("avgBooking").innerText = avg;
-
     document.getElementById("inquiryCount").innerText = inquiry;
     document.getElementById("contactedCount").innerText = contacted;
     document.getElementById("quoteCount").innerText = quote;

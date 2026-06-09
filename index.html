@@ -129,9 +129,6 @@
   <label>Travel Fee ($)</label>
   <input id="travelFee" type="number" value="0">
 
-  <label>Deposit Amount ($)</label>
-  <input id="depositAmount" type="number" value="50">
-
   <button onclick="generateQuote()">Generate Quote</button>
   <div id="quoteOutput" class="quote-box"></div>
   <button onclick="copyQuote()">Copy Quote</button>
@@ -304,7 +301,6 @@ Looking forward to working with you!
     const sessionDate = document.getElementById("sessionDate").value;
     const location = document.getElementById("sessionLocation").value;
     const travelFee = Number(document.getElementById("travelFee").value);
-    const deposit = Number(document.getElementById("depositAmount").value);
 
     let servicePrice = 0;
     if(service.includes("$150")) servicePrice = 150;
@@ -314,6 +310,7 @@ Looking forward to working with you!
     if(service.includes("$200/hr")) servicePrice = 200;
 
     const total = servicePrice + travelFee;
+    const deposit = Math.round(total * 0.50);
     const balance = total - deposit;
     const quoteNumber = "CV-" + Date.now();
 
@@ -350,12 +347,12 @@ Balance Due:
 $${balance}
 
 Terms:
-A deposit is required to reserve the session date. The remaining balance is due before or on the day of the session. Final delivery timeline and gallery details will be confirmed after booking.
+A 50% deposit is required to reserve the session date. The remaining balance is due before or on the day of the session. Final delivery timeline and gallery details will be confirmed after booking.
 
 Next Steps:
 1. Review and approve this quote.
 2. Confirm date, time, and location.
-3. Submit deposit to lock in your session.
+3. Submit 50% deposit to lock in your session.
 4. Caz Visuals will send final booking details.
 
 Thank you for choosing Caz Visuals.`;

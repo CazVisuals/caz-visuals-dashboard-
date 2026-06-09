@@ -183,6 +183,10 @@
   let currentQuoteData = null;
   let currentSavedQuoteId = null;
 
+  function generateContractNumber(){
+    return "CV-CON-" + Date.now();
+  }
+
   function getServiceText(){
     const s = document.getElementById("service");
     return s.options[s.selectedIndex].text;
@@ -353,9 +357,13 @@ Looking forward to working with you!
       ? `Event Coverage:\n${data.hours} hour(s) at $200/hr\n\n`
       : "";
 
+    const contractNumberLine = data.contract_number
+      ? `Contract #:\n${data.contract_number}\n\n`
+      : "";
+
     return `CAZ VISUALS PHOTOGRAPHY / VIDEOGRAPHY AGREEMENT
 
-Client:
+${contractNumberLine}Client:
 ${data.client_name}
 
 Service:
@@ -514,11 +522,27 @@ Thank you for choosing Caz Visuals.`;
       currentSavedQuoteId = data && data[0] ? data[0].id : null;
     }
 
-    const contractText = buildContractText(currentQuoteData);
+    const existing = await db
+      .from("contracts")
+      .select("id")
+      .eq("quote_id", currentSavedQuoteId)
+      .maybeSingle();
+
+    if(existing.data){
+      alert("A contract already exists for this quote.");
+      return;
+    }
+
+    const contractNumber = generateContractNumber();
+    const contractText = buildContractText({
+      ...currentQuoteData,
+      contract_number: contractNumber
+    });
 
     const contractData = {
       lead_id: currentQuoteData.lead_id || null,
       quote_id: currentSavedQuoteId,
+      contract_number: contractNumber,
       client_name: currentQuoteData.client_name,
       service: currentQuoteData.service,
       session_date: currentQuoteData.session_date || null,
@@ -543,7 +567,8 @@ Thank you for choosing Caz Visuals.`;
 
     currentContract = contractText;
     document.getElementById("contractOutput").textContent = currentContract;
-    alert("Quote converted to contract.");
+
+    alert("Contract created: " + contractNumber);
     loadContracts();
   }
 
@@ -559,7 +584,12 @@ Thank you for choosing Caz Visuals.`;
       return;
     }
 
-    currentContract = buildContractText(currentQuoteData);
+    const contractNumber = generateContractNumber();
+    currentContract = buildContractText({
+      ...currentQuoteData,
+      contract_number: contractNumber
+    });
+
     document.getElementById("contractOutput").textContent = currentContract;
   }
 
@@ -569,9 +599,12 @@ Thank you for choosing Caz Visuals.`;
       return;
     }
 
+    const contractNumber = generateContractNumber();
+
     const contractData = {
       lead_id: null,
       quote_id: currentSavedQuoteId,
+      contract_number: contractNumber,
       client_name: currentQuoteData.client_name,
       service: currentQuoteData.service,
       session_date: currentQuoteData.session_date || null,
@@ -594,7 +627,7 @@ Thank you for choosing Caz Visuals.`;
       return;
     }
 
-    alert("Contract saved.");
+    alert("Contract saved: " + contractNumber);
     loadContracts();
   }
 
@@ -695,6 +728,7 @@ Thank you for choosing Caz Visuals.`;
       contractList.innerHTML += `
         <div class="contract-card">
           <h3>${contract.client_name}</h3>
+          <p><strong>Contract #:</strong> ${contract.contract_number || "Not assigned"}</p>
           <p><strong>Service:</strong> ${contract.service}</p>
           <p><strong>Total:</strong> $${contract.total}</p>
           <p><strong>Deposit:</strong> $${contract.deposit}</p>

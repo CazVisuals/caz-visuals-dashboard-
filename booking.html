@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Book Caz Visuals</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body{font-family:Arial,sans-serif;background:#111;color:white;padding:20px;margin:0;}
+    h1,h2{color:#d4af37;text-align:center;}
+    .card{background:#1f1f1f;padding:20px;border-radius:15px;margin-bottom:20px;}
+    input,select,textarea{width:100%;padding:12px;margin:8px 0 15px;border-radius:8px;border:none;font-size:16px;box-sizing:border-box;}
+    button{background:#d4af37;color:#111;border:none;padding:14px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
+    .success{background:#123d20;color:#8cffaa;padding:15px;border-radius:10px;margin-top:15px;display:none;}
+    .error{background:#4a1414;color:#ffb3b3;padding:15px;border-radius:10px;margin-top:15px;display:none;}
+    a{color:#d4af37;}
+  </style>
+</head>
+
+<body>
+
+<h1>Caz Visuals</h1>
+<h2>Book a Session</h2>
+
+<div class="card">
+  <label>Name</label>
+  <input id="name" type="text" placeholder="Your full name">
+
+  <label>Phone</label>
+  <input id="phone" type="tel" placeholder="Your phone number">
+
+  <label>Email</label>
+  <input id="email" type="email" placeholder="Your email">
+
+  <label>Service Interested In</label>
+  <select id="service">
+    <option value="150">Mini Session - $150</option>
+    <option value="300">Couples Session - $300</option>
+    <option value="350">Family Session - $350</option>
+    <option value="250">Branding Session - $250</option>
+    <option value="200">Events - $200/hr</option>
+  </select>
+
+  <label>Preferred Date</label>
+  <input id="preferredDate" type="date">
+
+  <label>Location</label>
+  <input id="location" type="text" placeholder="Example: Edmond, OK">
+
+  <label>Tell me about your session</label>
+  <textarea id="message" rows="5" placeholder="What are you looking for? Any ideas, date, location, or details?"></textarea>
+
+  <button onclick="submitBooking()">Submit Inquiry</button>
+
+  <div id="successBox" class="success">
+    Thank you! Your inquiry was sent to Caz Visuals.
+  </div>
+
+  <div id="errorBox" class="error">
+    Something went wrong. Please try again.
+  </div>
+</div>
+
+<p style="text-align:center;">
+  <a href="index.html">Back to CRM</a>
+</p>
+
+<script>
+  const SUPABASE_URL = "https://pvpkjdsniwufshdmuwrc.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_Vr4QIF4f-hYW59rQiwuo6w_5Qb4oj5i";
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function getServiceText(){
+    const s = document.getElementById("service");
+    return s.options[s.selectedIndex].text;
+  }
+
+  async function submitBooking(){
+    document.getElementById("successBox").style.display = "none";
+    document.getElementById("errorBox").style.display = "none";
+
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+    const email = document.getElementById("email").value;
+    const serviceValue = document.getElementById("service").value;
+    const preferredDate = document.getElementById("preferredDate").value;
+    const location = document.getElementById("location").value;
+    const message = document.getElementById("message").value;
+
+    if(!name){
+      alert("Please enter your name.");
+      return;
+    }
+
+    const lead = {
+      name: name,
+      phone: phone,
+      email: email,
+      service: getServiceText(),
+      price: Number(serviceValue),
+      status: "Inquiry",
+      last_contacted: null,
+      next_followup: preferredDate || null,
+      notes: `Preferred Date: ${preferredDate || "Not provided"}
+Location: ${location || "Not provided"}
+
+Message:
+${message || "No message provided"}`
+    };
+
+    const { error } = await db.from("leads").insert([lead]);
+
+    if(error){
+      document.getElementById("errorBox").innerText = "Error: " + error.message;
+      document.getElementById("errorBox").style.display = "block";
+      return;
+    }
+
+    document.getElementById("successBox").style.display = "block";
+
+    document.getElementById("name").value = "";
+    document.getElementById("phone").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("preferredDate").value = "";
+    document.getElementById("location").value = "";
+    document.getElementById("message").value = "";
+  }
+</script>
+
+</body>
+</html>

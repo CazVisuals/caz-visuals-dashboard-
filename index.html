@@ -13,11 +13,13 @@
     .nav a{color:#d4af37;text-decoration:none;font-weight:bold;margin:5px;}
     input,select,textarea{width:100%;padding:12px;margin:8px 0 15px;border-radius:8px;border:none;font-size:16px;box-sizing:border-box;}
     button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
-    table{width:100%;border-collapse:collapse;}
-    th,td{padding:10px;text-align:left;border-bottom:1px solid #333;}
-    th{color:#d4af37;}
+    .delete-btn{background:#8b1e1e;color:white;}
     .lead-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
     .small{color:#ccc;font-size:14px;}
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .stat-box{background:#2a2a2a;padding:15px;border-radius:12px;}
+    .stat-box p{margin:5px 0;font-size:22px;font-weight:bold;}
+    .stat-box span{color:#d4af37;font-size:14px;}
   </style>
 </head>
 
@@ -36,10 +38,25 @@
 </div>
 
 <div class="card" id="dashboard">
-  <h2>Business Stats</h2>
-  <p>Leads: <span id="leadCount">0</span></p>
-  <p>Bookings: <span id="bookingCount">0</span></p>
-  <p>Revenue: $<span id="revenueCount">0</span></p>
+  <h2>Revenue Dashboard</h2>
+  <div class="stats-grid">
+    <div class="stat-box">
+      <span>Total Leads</span>
+      <p id="leadCount">0</p>
+    </div>
+    <div class="stat-box">
+      <span>Bookings</span>
+      <p id="bookingCount">0</p>
+    </div>
+    <div class="stat-box">
+      <span>Booked Revenue</span>
+      <p>$<span id="revenueCount">0</span></p>
+    </div>
+    <div class="stat-box">
+      <span>Avg Booking</span>
+      <p>$<span id="avgBooking">0</span></p>
+    </div>
+  </div>
 </div>
 
 <div class="card" id="addlead">
@@ -119,7 +136,7 @@
 <script>
   let leads = JSON.parse(localStorage.getItem("cazLeads")) || [];
 
-  function getServiceText(selectValue){
+  function getServiceText(){
     const serviceDropdown = document.getElementById("service");
     return serviceDropdown.options[serviceDropdown.selectedIndex].text;
   }
@@ -131,7 +148,7 @@
       name: document.getElementById("name").value,
       phone: document.getElementById("phone").value,
       email: document.getElementById("email").value,
-      service: getServiceText(serviceValue),
+      service: getServiceText(),
       price: Number(serviceValue),
       status: document.getElementById("status").value,
       notes: document.getElementById("notes").value
@@ -143,22 +160,31 @@
     }
 
     leads.push(lead);
-    localStorage.setItem("cazLeads", JSON.stringify(leads));
+    saveAndRender();
 
     document.getElementById("name").value = "";
     document.getElementById("phone").value = "";
     document.getElementById("email").value = "";
     document.getElementById("notes").value = "";
+  }
 
-    renderLeads();
+  function deleteLead(index){
+    if(confirm("Delete this lead?")){
+      leads.splice(index, 1);
+      saveAndRender();
+    }
   }
 
   function clearLeads(){
     if(confirm("Clear all leads?")){
       leads = [];
-      localStorage.removeItem("cazLeads");
-      renderLeads();
+      saveAndRender();
     }
+  }
+
+  function saveAndRender(){
+    localStorage.setItem("cazLeads", JSON.stringify(leads));
+    renderLeads();
   }
 
   function renderLeads(){
@@ -172,7 +198,7 @@
     let quote = 0;
     let delivered = 0;
 
-    leads.forEach(function(lead){
+    leads.forEach(function(lead, index){
       if(lead.status === "Booked"){
         bookings++;
         revenue += lead.price;
@@ -191,13 +217,17 @@
           <p><strong>Phone:</strong> ${lead.phone}</p>
           <p><strong>Email:</strong> ${lead.email}</p>
           <p class="small">${lead.notes}</p>
+          <button class="delete-btn" onclick="deleteLead(${index})">Delete Lead</button>
         </div>
       `;
     });
 
+    const avg = bookings > 0 ? Math.round(revenue / bookings) : 0;
+
     document.getElementById("leadCount").innerText = leads.length;
     document.getElementById("bookingCount").innerText = bookings;
     document.getElementById("revenueCount").innerText = revenue;
+    document.getElementById("avgBooking").innerText = avg;
 
     document.getElementById("inquiryCount").innerText = inquiry;
     document.getElementById("contactedCount").innerText = contacted;

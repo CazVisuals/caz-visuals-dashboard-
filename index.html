@@ -16,7 +16,7 @@
     button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
     .delete-btn{background:#8b1e1e;color:white;}
     .edit-btn{background:#444;color:white;}
-    .lead-card,.contract-card,.shoot-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
+    .lead-card,.contract-card,.shoot-card,.activity-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
     .small{color:#ccc;font-size:14px;}
     .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     .stat-box{background:#2a2a2a;padding:15px;border-radius:12px;}
@@ -43,6 +43,9 @@
     <a href="#contract">Contracts</a>
     <a href="#payments">Payments</a>
     <a href="#shoots">Shoots</a>
+    <a href="#aiAssistant">AI</a>
+    <a href="#dailyBrief">Daily Brief</a>
+    <a href="#activities">Activities</a>
   </div>
 </div>
 
@@ -174,15 +177,31 @@
   <div id="shootList">Loading shoots...</div>
 </div>
 
-<div class="card">
-  <h2>AI Assistant</h2>
 
+<div class="card" id="aiAssistant">
+  <h2>AI Assistant</h2>
   <button onclick="aiFollowUps()">Clients Needing Follow-Up</button>
   <button onclick="aiOutstanding()">Outstanding Payments</button>
   <button onclick="aiUpcoming()">Upcoming Shoots</button>
   <button onclick="aiRevenue()">Revenue Summary</button>
-
   <div id="aiOutput" class="reply-box"></div>
+</div>
+
+<div class="card" id="dailyBrief">
+  <h2>Daily Business Brief</h2>
+  <button onclick="aiDailyBrief()">Generate Daily Brief</button>
+  <div id="dailyBriefOutput" class="reply-box"></div>
+</div>
+
+<div class="card" id="activities">
+  <h2>Activity Timeline</h2>
+
+  <label>Activity Note</label>
+  <textarea id="manualActivityNote" rows="3" placeholder="Example: Called client and confirmed location"></textarea>
+
+  <button onclick="addManualActivity()">Add Activity Note</button>
+
+  <div id="activityList">Loading activities...</div>
 </div>
 
 <div class="card">
@@ -203,6 +222,7 @@
 
   let leads = [];
   let contracts = [];
+  let activities = [];
   let currentQuote = "";
   let currentContract = "";
   let currentQuoteData = null;
@@ -256,6 +276,81 @@
     }
 
     loadLeads();
+  }
+
+
+  async function logActivity(leadId, activityType, activityNote){
+    const activity = {
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "Caz Visuals CRM"
+    };
+
+    const { error } = await db.from("activities").insert([activity]);
+
+    if(error){
+      console.log("Activity log error:", error.message);
+      return;
+    }
+
+    loadActivities();
+  }
+
+  async function loadActivities(){
+    const { data, error } = await db
+      .from("activities")
+      .select("*")
+      .order("created_at", { ascending:false });
+
+    if(error){
+      console.log("Error loading activities:", error.message);
+      return;
+    }
+
+    activities = data || [];
+    renderActivities();
+  }
+
+  async function addManualActivity(){
+    const note = document.getElementById("manualActivityNote").value.trim();
+
+    if(!note){
+      alert("Add an activity note first.");
+      return;
+    }
+
+    await logActivity(null, "Manual Note", note);
+
+    document.getElementById("manualActivityNote").value = "";
+    alert("Activity added.");
+  }
+
+  function renderActivities(){
+    const activityList = document.getElementById("activityList");
+
+    if(!activityList) return;
+
+    activityList.innerHTML = "";
+
+    if(activities.length === 0){
+      activityList.innerHTML = "<p>No activity yet.</p>";
+      return;
+    }
+
+    activities.slice(0, 20).forEach(function(a){
+      const lead = leads.find(l => Number(l.id) === Number(a.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      activityList.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${a.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${a.activity_note}</p>
+          <p class="small">${a.created_at || ""}</p>
+        </div>
+      `;
+    });
   }
 
   async function loadLeads(){
@@ -637,6 +732,7 @@ Thank you for choosing Caz Visuals.`;
 
     currentSavedQuoteId = data && data[0] ? data[0].id : null;
     await updateLeadStatus(currentQuoteData.lead_id, "Quote Sent");
+    await logActivity(currentQuoteData.lead_id, "Quote Sent", "Quote saved for " + currentQuoteData.service + " totaling $" + currentQuoteData.total + ".");
     alert("Quote saved.");
   }
 
@@ -656,6 +752,7 @@ Thank you for choosing Caz Visuals.`;
 
       currentSavedQuoteId = data && data[0] ? data[0].id : null;
       await updateLeadStatus(currentQuoteData.lead_id, "Quote Sent");
+      await logActivity(currentQuoteData.lead_id, "Quote Sent", "Quote saved for " + currentQuoteData.service + " totaling $" + currentQuoteData.total + ".");
     }
 
     const existing = await db
@@ -705,6 +802,7 @@ Thank you for choosing Caz Visuals.`;
     document.getElementById("contractOutput").textContent = currentContract;
 
     await updateLeadStatus(currentQuoteData.lead_id, "Booked");
+    await logActivity(currentQuoteData.lead_id, "Contract Created", "Contract " + contractNumber + " created for $" + currentQuoteData.total + ".");
     alert("Contract created: " + contractNumber);
     loadContracts();
   }
@@ -769,6 +867,7 @@ Thank you for choosing Caz Visuals.`;
     }
 
     await updateLeadStatus(currentQuoteData.lead_id, "Booked");
+    await logActivity(currentQuoteData.lead_id, "Contract Saved", "Contract " + contractNumber + " saved for $" + currentQuoteData.total + ".");
     alert("Contract saved: " + contractNumber);
     loadContracts();
   }
@@ -802,6 +901,7 @@ Thank you for choosing Caz Visuals.`;
     if(error) alert("Error: " + error.message);
 
     await updateLeadStatus(contract.lead_id, "Deposit Received");
+    await logActivity(contract.lead_id, "Deposit Received", "Deposit marked paid for " + contract.client_name + ": $" + contract.deposit + ".");
     loadContracts();
   }
 
@@ -816,6 +916,7 @@ Thank you for choosing Caz Visuals.`;
     if(error) alert("Error: " + error.message);
 
     await updateLeadStatus(contract.lead_id, "Paid In Full");
+    await logActivity(contract.lead_id, "Paid In Full", "Balance marked paid for " + contract.client_name + ": $" + contract.balance + ".");
     loadContracts();
   }
 
@@ -1008,96 +1109,173 @@ Thank you for choosing Caz Visuals.`;
     document.getElementById("paidInFullCount").innerText = paidInFull;
     document.getElementById("deliveredCount").innerText = delivered;
   }
-  
+
+
   function aiFollowUps(){
-  const needingFollowUp = leads.filter(l =>
-    l.status !== "Booked" &&
-    l.status !== "Delivered" &&
-    l.next_followup
-  );
+    const needingFollowUp = leads.filter(l =>
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed" &&
+      l.next_followup
+    );
 
-  let output = "CLIENTS NEEDING FOLLOW-UP\n\n";
+    let output = "CLIENTS NEEDING FOLLOW-UP\n\n";
 
-  if(needingFollowUp.length === 0){
-    output += "No follow-ups needed.";
-  } else {
-    needingFollowUp.forEach(l => {
-      output += l.name + " - " + l.service + "\n";
-      output += "Follow-Up: " + l.next_followup + "\n\n";
-    });
-  }
-
-  document.getElementById("aiOutput").innerText = output;
-}
-
-function aiOutstanding(){
-  const outstanding = contracts.filter(c => !c.balance_paid);
-
-  let total = 0;
-  let output = "OUTSTANDING PAYMENTS\n\n";
-
-  if(outstanding.length === 0){
-    output += "No outstanding payments.\n\n";
-  } else {
-    outstanding.forEach(c => {
-      total += Number(c.balance || 0);
-      output += c.client_name + "\n";
-      output += "Balance: $" + c.balance + "\n\n";
-    });
-  }
-
-  output += "TOTAL OUTSTANDING: $" + total;
-  document.getElementById("aiOutput").innerText = output;
-}
-
-function aiUpcoming(){
-  const upcoming = contracts
-    .filter(c => c.session_date)
-    .sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
-
-  let output = "UPCOMING SHOOTS\n\n";
-
-  if(upcoming.length === 0){
-    output += "No upcoming shoots.";
-  } else {
-    upcoming.forEach(c => {
-      output += c.session_date + "\n";
-      output += c.client_name + "\n";
-      output += c.service + "\n\n";
-    });
-  }
-
-  document.getElementById("aiOutput").innerText = output;
-}
-
-function aiRevenue(){
-  let bookedRevenue = 0;
-  let deposits = 0;
-  let outstanding = 0;
-
-  contracts.forEach(c => {
-    bookedRevenue += Number(c.total || 0);
-
-    if(c.deposit_paid){
-      deposits += Number(c.deposit || 0);
+    if(needingFollowUp.length === 0){
+      output += "No follow-ups needed.";
+    } else {
+      needingFollowUp.forEach(l => {
+        output += l.name + " - " + l.service + "\n";
+        output += "Follow-Up: " + l.next_followup + "\n\n";
+      });
     }
 
-    if(!c.balance_paid){
-      outstanding += Number(c.balance || 0);
+    document.getElementById("aiOutput").innerText = output;
+  }
+
+  function aiOutstanding(){
+    const outstanding = contracts.filter(c => !c.balance_paid);
+
+    let total = 0;
+    let output = "OUTSTANDING PAYMENTS\n\n";
+
+    if(outstanding.length === 0){
+      output += "No outstanding payments.\n\n";
+    } else {
+      outstanding.forEach(c => {
+        total += Number(c.balance || 0);
+        output += c.client_name + "\n";
+        output += "Balance: $" + c.balance + "\n\n";
+      });
     }
-  });
 
-  let output = "REVENUE SUMMARY\n\n";
-  output += "Booked Revenue: $" + bookedRevenue + "\n\n";
-  output += "Deposits Received: $" + deposits + "\n\n";
-  output += "Outstanding Balance: $" + outstanding;
+    output += "TOTAL OUTSTANDING: $" + total;
+    document.getElementById("aiOutput").innerText = output;
+  }
 
-  document.getElementById("aiOutput").innerText = output;
-}
+  function aiUpcoming(){
+    const upcoming = contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
 
-loadLeads();
-loadContracts();
+    let output = "UPCOMING SHOOTS\n\n";
 
+    if(upcoming.length === 0){
+      output += "No upcoming shoots.";
+    } else {
+      upcoming.forEach(c => {
+        output += c.session_date + "\n";
+        output += c.client_name + "\n";
+        output += c.service + "\n\n";
+      });
+    }
+
+    document.getElementById("aiOutput").innerText = output;
+  }
+
+  function aiRevenue(){
+    let bookedRevenue = 0;
+    let deposits = 0;
+    let outstanding = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        deposits += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstanding += Number(c.balance || 0);
+      }
+    });
+
+    let output = "REVENUE SUMMARY\n\n";
+    output += "Booked Revenue: $" + bookedRevenue + "\n\n";
+    output += "Deposits Received: $" + deposits + "\n\n";
+    output += "Outstanding Balance: $" + outstanding;
+
+    document.getElementById("aiOutput").innerText = output;
+  }
+
+  function aiDailyBrief(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+      return new Date(l.next_followup) <= today &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    const upcoming = contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, 5);
+
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+    const unpaidBalances = contracts.filter(c => !c.balance_paid);
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "DAILY BUSINESS BRIEF\n\n";
+
+    output += "Follow-Ups Due: " + followUps.length + "\n";
+    followUps.slice(0, 5).forEach(l => {
+      output += "- " + l.name + " | " + l.service + " | " + l.next_followup + "\n";
+    });
+
+    output += "\nUpcoming Shoots:\n";
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nPayments:\n";
+    output += "- Clients without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Clients with balance still open: " + unpaidBalances.length + "\n";
+    output += "- Outstanding balance: $" + outstandingBalance + "\n";
+
+    output += "\nRevenue:\n";
+    output += "- Booked revenue: $" + bookedRevenue + "\n";
+    output += "- Deposits received: $" + depositsReceived + "\n";
+
+    output += "\nRecommended Action:\n";
+
+    if(followUps.length > 0){
+      output += "Start by following up with " + followUps[0].name + ".";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("dailyBriefOutput").innerText = output;
+  }
+
+  loadLeads();
+  loadContracts();
+  loadActivities();
 </script>
+
 </body>
 </html>

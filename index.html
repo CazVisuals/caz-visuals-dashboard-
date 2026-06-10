@@ -175,6 +175,17 @@
 </div>
 
 <div class="card">
+  <h2>AI Assistant</h2>
+
+  <button onclick="aiFollowUps()">Clients Needing Follow-Up</button>
+  <button onclick="aiOutstanding()">Outstanding Payments</button>
+  <button onclick="aiUpcoming()">Upcoming Shoots</button>
+  <button onclick="aiRevenue()">Revenue Summary</button>
+
+  <div id="aiOutput" class="reply-box"></div>
+</div>
+
+<div class="card">
   <h2>Pipeline</h2>
   <p>🟡 Inquiry: <span id="inquiryCount">0</span></p>
   <p>🔵 Contacted: <span id="contactedCount">0</span></p>
@@ -997,10 +1008,96 @@ Thank you for choosing Caz Visuals.`;
     document.getElementById("paidInFullCount").innerText = paidInFull;
     document.getElementById("deliveredCount").innerText = delivered;
   }
+  
+  function aiFollowUps(){
+  const needingFollowUp = leads.filter(l =>
+    l.status !== "Booked" &&
+    l.status !== "Delivered" &&
+    l.next_followup
+  );
 
-  loadLeads();
-  loadContracts();
+  let output = "CLIENTS NEEDING FOLLOW-UP\n\n";
+
+  if(needingFollowUp.length === 0){
+    output += "No follow-ups needed.";
+  } else {
+    needingFollowUp.forEach(l => {
+      output += l.name + " - " + l.service + "\n";
+      output += "Follow-Up: " + l.next_followup + "\n\n";
+    });
+  }
+
+  document.getElementById("aiOutput").innerText = output;
+}
+
+function aiOutstanding(){
+  const outstanding = contracts.filter(c => !c.balance_paid);
+
+  let total = 0;
+  let output = "OUTSTANDING PAYMENTS\n\n";
+
+  if(outstanding.length === 0){
+    output += "No outstanding payments.\n\n";
+  } else {
+    outstanding.forEach(c => {
+      total += Number(c.balance || 0);
+      output += c.client_name + "\n";
+      output += "Balance: $" + c.balance + "\n\n";
+    });
+  }
+
+  output += "TOTAL OUTSTANDING: $" + total;
+  document.getElementById("aiOutput").innerText = output;
+}
+
+function aiUpcoming(){
+  const upcoming = contracts
+    .filter(c => c.session_date)
+    .sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
+
+  let output = "UPCOMING SHOOTS\n\n";
+
+  if(upcoming.length === 0){
+    output += "No upcoming shoots.";
+  } else {
+    upcoming.forEach(c => {
+      output += c.session_date + "\n";
+      output += c.client_name + "\n";
+      output += c.service + "\n\n";
+    });
+  }
+
+  document.getElementById("aiOutput").innerText = output;
+}
+
+function aiRevenue(){
+  let bookedRevenue = 0;
+  let deposits = 0;
+  let outstanding = 0;
+
+  contracts.forEach(c => {
+    bookedRevenue += Number(c.total || 0);
+
+    if(c.deposit_paid){
+      deposits += Number(c.deposit || 0);
+    }
+
+    if(!c.balance_paid){
+      outstanding += Number(c.balance || 0);
+    }
+  });
+
+  let output = "REVENUE SUMMARY\n\n";
+  output += "Booked Revenue: $" + bookedRevenue + "\n\n";
+  output += "Deposits Received: $" + deposits + "\n\n";
+  output += "Outstanding Balance: $" + outstanding;
+
+  document.getElementById("aiOutput").innerText = output;
+}
+
+loadLeads();
+loadContracts();
+
 </script>
-
 </body>
 </html>

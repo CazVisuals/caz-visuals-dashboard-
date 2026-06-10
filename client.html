@@ -163,8 +163,7 @@
     const params = new URLSearchParams(window.location.search);
 
     return {
-      id: params.get("id"),
-      contractNumber: params.get("contract_number") || params.get("contract")
+      contractNumber: params.get("contract") || params.get("contract_number")
     };
   }
 
@@ -175,19 +174,17 @@
   async function loadClientPortal(){
     const urlValue = getUrlValue();
 
-    let query = db.from("contracts").select("*");
-
-    if(urlValue.id){
-      query = query.eq("id", Number(urlValue.id));
-    } else if(urlValue.contractNumber){
-      query = query.eq("contract_number", urlValue.contractNumber);
-    } else {
+    if(!urlValue.contractNumber){
       document.getElementById("loadingBox").innerHTML =
-        "<h2>Missing Contract ID</h2><p>This client portal link is missing an ID.</p><p>Use: client.html?id=YOUR_CONTRACT_ID</p><p>Or: client.html?contract_number=YOUR_CONTRACT_NUMBER</p>";
+        "<h2>Missing Contract Number</h2><p>This client portal link is missing a contract number.</p><p>Use: client.html?contract=YOUR_CONTRACT_NUMBER</p>";
       return;
     }
 
-    const { data, error } = await query.maybeSingle();
+    const { data, error } = await db
+      .from("contracts")
+      .select("*")
+      .eq("contract_number", urlValue.contractNumber)
+      .maybeSingle();
 
     if(error){
       document.getElementById("loadingBox").innerHTML =
@@ -197,7 +194,7 @@
 
     if(!data){
       document.getElementById("loadingBox").innerHTML =
-        "<h2>Contract Not Found</h2><p>No contract was found for this link.</p><p>Check the contract ID in Supabase.</p>";
+        "<h2>Contract Not Found</h2><p>No contract was found for this link.</p><p>Check the contract number in Supabase.</p>";
       return;
     }
 

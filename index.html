@@ -1048,10 +1048,26 @@ Thank you for choosing Caz Visuals.`;
           <button onclick="markSigned(${contract.id})">Mark Signed</button>
           <button onclick="markDepositPaid(${contract.id})">Mark Deposit Paid</button>
           <button onclick="markBalancePaid(${contract.id})">Mark Balance Paid</button>
+          <button onclick="copyPortalLink('${contract.contract_number}')">Copy Client Portal Link</button>
           <button class="delete-btn" onclick="deleteContract(${contract.id})">Delete This Contract</button>
         </div>
       `;
     });
+  }
+
+
+  function copyPortalLink(contractNumber){
+    if(!contractNumber || contractNumber === "null" || contractNumber === "undefined"){
+      alert("This contract does not have a contract number yet.");
+      return;
+    }
+
+    const link =
+      "https://cazvisuals.netlify.app/client.html?contract=" +
+      encodeURIComponent(contractNumber);
+
+    navigator.clipboard.writeText(link);
+    alert("Client portal link copied.");
   }
 
   function renderLeads(){

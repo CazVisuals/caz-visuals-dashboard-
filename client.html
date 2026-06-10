@@ -13,29 +13,20 @@
       padding:20px;
       margin:0;
     }
-
-    h1,h2,h3{
-      color:#d4af37;
-    }
-
-    h1{
-      text-align:center;
-    }
-
+    h1,h2,h3{color:#d4af37;}
+    h1{text-align:center;}
     .card{
       background:#1f1f1f;
       padding:20px;
       border-radius:15px;
       margin-bottom:20px;
     }
-
     .info-box{
       background:#2a2a2a;
       padding:15px;
       border-radius:12px;
       margin-bottom:12px;
     }
-
     .contract-box{
       background:#111;
       padding:15px;
@@ -44,7 +35,6 @@
       line-height:1.5;
       margin-top:10px;
     }
-
     button{
       background:#d4af37;
       color:#111;
@@ -57,13 +47,11 @@
       margin-top:10px;
       cursor:pointer;
     }
-
     button:disabled{
       background:#555;
       color:#ccc;
       cursor:not-allowed;
     }
-
     input{
       width:100%;
       padding:12px;
@@ -73,22 +61,9 @@
       font-size:16px;
       box-sizing:border-box;
     }
-
-    .success{
-      color:#00cc66;
-      font-weight:bold;
-    }
-
-    .warning{
-      color:#ffd633;
-      font-weight:bold;
-    }
-
-    .small{
-      color:#ccc;
-      font-size:14px;
-    }
-
+    .success{color:#00cc66;font-weight:bold;}
+    .warning{color:#ffd633;font-weight:bold;}
+    .small{color:#ccc;font-size:14px;}
     .footer{
       text-align:center;
       color:#aaa;
@@ -170,11 +145,6 @@
     </p>
   </div>
 
-  <div class="card">
-    <h2>Need Help?</h2>
-    <p>If anything looks incorrect, contact Caz Visuals before signing.</p>
-  </div>
-
 </div>
 
 <div class="footer">
@@ -189,33 +159,35 @@
 
   let currentContract = null;
 
-  function getContractIdFromUrl(){
+  function getUrlValue(){
     const params = new URLSearchParams(window.location.search);
-    return params.get("id");
+
+    return {
+      id: params.get("id"),
+      contractNumber: params.get("contract_number") || params.get("contract")
+    };
   }
 
   function yesNo(value){
-    if(value){
-      return "<span class='success'>Yes</span>";
-    }
-
-    return "<span class='warning'>No</span>";
+    return value ? "<span class='success'>Yes</span>" : "<span class='warning'>No</span>";
   }
 
   async function loadClientPortal(){
-    const contractId = getContractIdFromUrl();
+    const urlValue = getUrlValue();
 
-    if(!contractId){
+    let query = db.from("contracts").select("*");
+
+    if(urlValue.id){
+      query = query.eq("id", Number(urlValue.id));
+    } else if(urlValue.contractNumber){
+      query = query.eq("contract_number", urlValue.contractNumber);
+    } else {
       document.getElementById("loadingBox").innerHTML =
-        "<h2>Missing Contract ID</h2><p>This client portal link is missing an ID.</p><p>Example: client.html?id=3</p>";
+        "<h2>Missing Contract ID</h2><p>This client portal link is missing an ID.</p><p>Use: client.html?id=YOUR_CONTRACT_ID</p><p>Or: client.html?contract_number=YOUR_CONTRACT_NUMBER</p>";
       return;
     }
 
-    const { data, error } = await db
-      .from("contracts")
-      .select("*")
-      .eq("id", contractId)
-      .maybeSingle();
+    const { data, error } = await query.maybeSingle();
 
     if(error){
       document.getElementById("loadingBox").innerHTML =
@@ -225,7 +197,7 @@
 
     if(!data){
       document.getElementById("loadingBox").innerHTML =
-        "<h2>Contract Not Found</h2><p>No contract was found for this link.</p>";
+        "<h2>Contract Not Found</h2><p>No contract was found for this link.</p><p>Check the contract ID in Supabase.</p>";
       return;
     }
 
@@ -282,9 +254,7 @@
 
     const { error } = await db
       .from("contracts")
-      .update({
-        signed: true
-      })
+      .update({ signed: true })
       .eq("id", currentContract.id);
 
     if(error){

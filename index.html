@@ -1,218 +1,185 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Caz Visuals CRM</title>
+  <title>Caz Visuals Client Portal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body{font-family:Arial,sans-serif;background:#111;color:white;padding:20px;margin:0;}
-    h1,h2{color:#d4af37;}
-    h1{text-align:center;}
-    .card{background:#1f1f1f;padding:20px;border-radius:15px;margin-bottom:20px;}
-    .nav{display:flex;justify-content:space-around;flex-wrap:wrap;}
-    .nav a{color:#d4af37;text-decoration:none;font-weight:bold;margin:5px;}
-    input,select,textarea{width:100%;padding:12px;margin:8px 0 15px;border-radius:8px;border:none;font-size:16px;box-sizing:border-box;}
-    button{background:#d4af37;color:#111;border:none;padding:12px;border-radius:8px;font-weight:bold;width:100%;font-size:16px;margin-top:10px;}
-    .delete-btn{background:#8b1e1e;color:white;}
-    .edit-btn{background:#444;color:white;}
-    .lead-card,.contract-card,.shoot-card,.activity-card{background:#2a2a2a;padding:15px;border-radius:12px;margin-bottom:12px;}
-    .small{color:#ccc;font-size:14px;}
-    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-    .stat-box{background:#2a2a2a;padding:15px;border-radius:12px;}
-    .stat-box p{margin:5px 0;font-size:22px;font-weight:bold;}
-    .stat-box span{color:#d4af37;font-size:14px;}
-    .green{color:#00cc66;font-weight:bold;}
-    .yellow{color:#ffd633;font-weight:bold;}
-    .red{color:#ff4d4d;font-weight:bold;}
-    .reply-box,.quote-box,.contract-box{background:#111;padding:15px;border-radius:10px;white-space:pre-wrap;margin-top:10px;}
+    body{
+      font-family:Arial,sans-serif;
+      background:#111;
+      color:white;
+      padding:20px;
+      margin:0;
+    }
+
+    h1,h2,h3{
+      color:#d4af37;
+    }
+
+    h1{
+      text-align:center;
+    }
+
+    .card{
+      background:#1f1f1f;
+      padding:20px;
+      border-radius:15px;
+      margin-bottom:20px;
+    }
+
+    .info-box{
+      background:#2a2a2a;
+      padding:15px;
+      border-radius:12px;
+      margin-bottom:12px;
+    }
+
+    .contract-box{
+      background:#111;
+      padding:15px;
+      border-radius:10px;
+      white-space:pre-wrap;
+      line-height:1.5;
+      margin-top:10px;
+    }
+
+    button{
+      background:#d4af37;
+      color:#111;
+      border:none;
+      padding:14px;
+      border-radius:8px;
+      font-weight:bold;
+      width:100%;
+      font-size:16px;
+      margin-top:10px;
+      cursor:pointer;
+    }
+
+    button:disabled{
+      background:#555;
+      color:#ccc;
+      cursor:not-allowed;
+    }
+
+    input{
+      width:100%;
+      padding:12px;
+      margin:8px 0 15px;
+      border-radius:8px;
+      border:none;
+      font-size:16px;
+      box-sizing:border-box;
+    }
+
+    .success{
+      color:#00cc66;
+      font-weight:bold;
+    }
+
+    .warning{
+      color:#ffd633;
+      font-weight:bold;
+    }
+
+    .small{
+      color:#ccc;
+      font-size:14px;
+    }
+
+    .footer{
+      text-align:center;
+      color:#aaa;
+      font-size:13px;
+      margin-top:30px;
+    }
   </style>
 </head>
 
 <body>
 
-<h1>Caz Visuals CRM</h1>
+<h1>Caz Visuals Client Portal</h1>
 
 <div class="card">
-  <div class="nav">
-    <a href="#dashboard">Dashboard</a>
-    <a href="#addlead">Add Lead</a>
-    <a href="#leads">Leads</a>
-    <a href="#clientDetail">Client View</a>
-    <a href="#quote">Quotes</a>
-    <a href="#contract">Contracts</a>
-    <a href="#payments">Payments</a>
-    <a href="#shoots">Shoots</a>
-    <a href="#aiAssistant">AI</a>
-    <a href="#dailyBrief">Daily Brief</a>
-    <a href="#activities">Activities</a>
+  <h2>Session Agreement</h2>
+  <p class="small">Review your session details, agreement, and payment status below.</p>
+</div>
+
+<div id="loadingBox" class="card">
+  Loading client portal...
+</div>
+
+<div id="portalContent" style="display:none;">
+
+  <div class="card">
+    <h2 id="clientName">Client Name</h2>
+    <p><strong>Contract #:</strong> <span id="contractNumber"></span></p>
+
+    <div class="info-box">
+      <p><strong>Service:</strong> <span id="service"></span></p>
+      <p><strong>Session Date:</strong> <span id="sessionDate"></span></p>
+      <p><strong>Location:</strong> <span id="location"></span></p>
+      <p><strong>Hours:</strong> <span id="hours"></span></p>
+    </div>
+
+    <div class="info-box">
+      <p><strong>Total:</strong> $<span id="total"></span></p>
+      <p><strong>Deposit:</strong> $<span id="deposit"></span></p>
+      <p><strong>Balance:</strong> $<span id="balance"></span></p>
+    </div>
+
+    <div class="info-box">
+      <p><strong>Signed:</strong> <span id="signedStatus"></span></p>
+      <p><strong>Deposit Paid:</strong> <span id="depositStatus"></span></p>
+      <p><strong>Balance Paid:</strong> <span id="balanceStatus"></span></p>
+      <p><strong>Payment Status:</strong> <span id="paymentStatus"></span></p>
+    </div>
   </div>
-</div>
 
-<div class="card" id="dashboard">
-  <h2>Business Dashboard</h2>
-  <div class="stats-grid">
-    <div class="stat-box"><span>Total Leads</span><p id="leadCount">0</p></div>
-    <div class="stat-box"><span>Bookings</span><p id="bookingCount">0</p></div>
-    <div class="stat-box"><span>Booked Revenue</span><p>$<span id="revenueCount">0</span></p></div>
-    <div class="stat-box"><span>Avg Booking</span><p>$<span id="avgBooking">0</span></p></div>
-    <div class="stat-box"><span>Revenue Pipeline</span><p>$<span id="pipelineRevenue">0</span></p></div>
-    <div class="stat-box"><span>Contracts Signed</span><p id="signedContracts">0</p></div>
-    <div class="stat-box"><span>Deposits Received</span><p>$<span id="depositsReceived">0</span></p></div>
-    <div class="stat-box"><span>Outstanding Balance</span><p>$<span id="outstandingBalance">0</span></p></div>
+  <div class="card">
+    <h2>Agreement</h2>
+    <div id="contractText" class="contract-box"></div>
   </div>
-</div>
 
-<div class="card" id="addlead">
-  <h2 id="formTitle">Add New Lead</h2>
-  <input id="editId" type="hidden">
+  <div class="card">
+    <h2>Approve Agreement</h2>
+    <p>
+      By typing your full name and clicking approve, you confirm that you have reviewed
+      and agree to the session details and agreement terms.
+    </p>
 
-  <label>Name</label>
-  <input id="name" type="text" placeholder="Client name">
+    <label>Type Your Full Name</label>
+    <input id="signatureName" type="text" placeholder="Your full name">
 
-  <label>Phone</label>
-  <input id="phone" type="tel" placeholder="Client phone number">
-
-  <label>Email</label>
-  <input id="email" type="email" placeholder="Client email">
-
-  <label>Service</label>
-  <select id="service">
-    <option value="150">Mini Session - $150</option>
-    <option value="300">Couples Session - $300</option>
-    <option value="350">Family Session - $350</option>
-    <option value="250">Branding Session - $250</option>
-    <option value="200">Events - $200/hr</option>
-  </select>
-
-  <label>Status</label>
-  <select id="status">
-    <option>Inquiry</option>
-    <option>Contacted</option>
-    <option>Quote Sent</option>
-    <option>Booked</option>
-    <option>Deposit Received</option>
-    <option>Paid In Full</option>
-    <option>Shot Complete</option>
-    <option>Delivered</option>
-    <option>Closed</option>
-  </select>
-
-  <label>Last Contacted</label>
-  <input id="lastContacted" type="date">
-
-  <label>Next Follow-Up</label>
-  <input id="nextFollowUp" type="date">
-
-  <label>Notes</label>
-  <textarea id="notes" rows="4"></textarea>
-
-  <button onclick="saveLead()">Save Lead</button>
-  <button onclick="resetForm()">Cancel Edit</button>
-</div>
-
-<div class="card" id="leads">
-  <h2>Lead Tracker</h2>
-  <div id="leadList">Loading leads...</div>
-</div>
-
-
-<div class="card" id="clientDetail">
-  <h2>Client Detail View</h2>
-  <div id="clientDetailBox">
-    <p>Select a client from the Lead Tracker to view their details.</p>
+    <button id="signButton" onclick="signContract()">Approve / Sign Agreement</button>
+    <p id="signMessage" class="small"></p>
   </div>
+
+  <div class="card">
+    <h2>Payment</h2>
+    <p><strong>Deposit Required:</strong> $<span id="paymentDeposit"></span></p>
+    <p><strong>Remaining Balance:</strong> $<span id="paymentBalance"></span></p>
+
+    <button onclick="payDepositPlaceholder()">Pay Deposit</button>
+    <button onclick="payBalancePlaceholder()">Pay Balance</button>
+
+    <p class="small">
+      Online payments are coming next. For now, use this page to review and approve your agreement.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Need Help?</h2>
+    <p>If anything looks incorrect, contact Caz Visuals before signing.</p>
+  </div>
+
 </div>
 
-<div class="card" id="quote">
-  <h2>Quote Generator</h2>
-  <input id="quoteLeadId" type="hidden">
-
-  <label>Client Name</label>
-  <input id="quoteName" type="text" placeholder="Client name">
-
-  <label>Service</label>
-  <select id="quoteService">
-    <option>Mini Session - $150</option>
-    <option>Couples Session - $300</option>
-    <option>Family Session - $350</option>
-    <option>Branding Session - $250</option>
-    <option>Events - $200/hr</option>
-  </select>
-
-  <label>Event Hours</label>
-  <input id="eventHours" type="number" value="1">
-
-  <label>Session Date</label>
-  <input id="sessionDate" type="date">
-
-  <label>Session Location</label>
-  <input id="sessionLocation" type="text" placeholder="Example: Edmond, OK">
-
-  <label>Travel Fee ($)</label>
-  <input id="travelFee" type="number" value="0">
-
-  <button onclick="generateQuote()">Generate Quote</button>
-  <button onclick="saveQuote()">Save Quote</button>
-  <button onclick="convertQuoteToContract()">Convert Quote To Contract</button>
-  <div id="quoteOutput" class="quote-box"></div>
-  <button onclick="copyQuote()">Copy Quote</button>
-</div>
-
-<div class="card" id="contract">
-  <h2>Contract Generator</h2>
-  <button onclick="generateContract()">Generate Contract From Quote</button>
-  <button onclick="saveContract()">Save Contract</button>
-  <div id="contractOutput" class="contract-box"></div>
-  <button onclick="copyContract()">Copy Contract</button>
-</div>
-
-<div class="card" id="payments">
-  <h2>Contracts & Payments</h2>
-  <div id="contractList">Loading contracts...</div>
-</div>
-
-<div class="card" id="shoots">
-  <h2>Upcoming Shoots</h2>
-  <div id="shootList">Loading shoots...</div>
-</div>
-
-
-<div class="card" id="aiAssistant">
-  <h2>AI Assistant</h2>
-  <button onclick="aiFollowUps()">Clients Needing Follow-Up</button>
-  <button onclick="aiOutstanding()">Outstanding Payments</button>
-  <button onclick="aiUpcoming()">Upcoming Shoots</button>
-  <button onclick="aiRevenue()">Revenue Summary</button>
-  <div id="aiOutput" class="reply-box"></div>
-</div>
-
-<div class="card" id="dailyBrief">
-  <h2>Daily Business Brief</h2>
-  <button onclick="aiDailyBrief()">Generate Daily Brief</button>
-  <div id="dailyBriefOutput" class="reply-box"></div>
-</div>
-
-<div class="card" id="activities">
-  <h2>Activity Timeline</h2>
-
-  <label>Activity Note</label>
-  <textarea id="manualActivityNote" rows="3" placeholder="Example: Called client and confirmed location"></textarea>
-
-  <button onclick="addManualActivity()">Add Activity Note</button>
-
-  <div id="activityList">Loading activities...</div>
-</div>
-
-<div class="card">
-  <h2>Pipeline</h2>
-  <p>🟡 Inquiry: <span id="inquiryCount">0</span></p>
-  <p>🔵 Contacted: <span id="contactedCount">0</span></p>
-  <p>🟣 Quote Sent: <span id="quoteCount">0</span></p>
-  <p>🟢 Booked: <span id="bookedPipelineCount">0</span></p>
-  <p>💰 Deposit Received: <span id="depositReceivedCount">0</span></p>
-  <p>✅ Paid In Full: <span id="paidInFullCount">0</span></p>
-  <p>⚫ Delivered: <span id="deliveredCount">0</span></p>
+<div class="footer">
+  Caz Visuals<br>
+  Operated by ImCaz Photography LLC
 </div>
 
 <script>
@@ -220,1061 +187,131 @@
   const SUPABASE_KEY = "sb_publishable_Vr4QIF4f-hYW59rQiwuo6w_5Qb4oj5i";
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let leads = [];
-  let contracts = [];
-  let activities = [];
-  let currentQuote = "";
-  let currentContract = "";
-  let currentQuoteData = null;
-  let currentSavedQuoteId = null;
+  let currentContract = null;
 
-  function generateContractNumber(){
-    return "CV-CON-" + Date.now();
+  function getContractIdFromUrl(){
+    const params = new URLSearchParams(window.location.search);
+    return params.get("id");
   }
 
-  function getServiceText(){
-    const s = document.getElementById("service");
-    return s.options[s.selectedIndex].text;
-  }
-
-  function setQuoteServiceByText(serviceText){
-    const quoteService = document.getElementById("quoteService");
-
-    for(let i = 0; i < quoteService.options.length; i++){
-      if(serviceText && quoteService.options[i].text.includes(serviceText.split(" - ")[0])){
-        quoteService.selectedIndex = i;
-        return;
-      }
-    }
-  }
-
-  function extractLocationFromNotes(notes){
-    if(!notes) return "";
-
-    const lines = notes.split("\n");
-
-    for(let line of lines){
-      if(line.toLowerCase().startsWith("location:")){
-        return line.replace(/location:/i, "").trim();
-      }
+  function yesNo(value){
+    if(value){
+      return "<span class='success'>Yes</span>";
     }
 
-    return "";
+    return "<span class='warning'>No</span>";
   }
 
-  async function updateLeadStatus(leadId, status){
-    if(!leadId) return;
+  async function loadClientPortal(){
+    const contractId = getContractIdFromUrl();
 
-    const { error } = await db
-      .from("leads")
-      .update({ status: status })
-      .eq("id", leadId);
-
-    if(error){
-      console.log("Lead status update error:", error.message);
+    if(!contractId){
+      document.getElementById("loadingBox").innerHTML =
+        "<h2>Missing Contract ID</h2><p>This client portal link is missing an ID.</p><p>Example: client.html?id=3</p>";
       return;
     }
 
-    loadLeads();
-  }
-
-
-  async function logActivity(leadId, activityType, activityNote){
-    const activity = {
-      lead_id: leadId || null,
-      activity_type: activityType,
-      activity_note: activityNote,
-      created_by: "Caz Visuals CRM"
-    };
-
-    const { error } = await db.from("activities").insert([activity]);
-
-    if(error){
-      console.log("Activity log error:", error.message);
-      return;
-    }
-
-    loadActivities();
-  }
-
-  async function loadActivities(){
     const { data, error } = await db
-      .from("activities")
-      .select("*")
-      .order("created_at", { ascending:false });
-
-    if(error){
-      console.log("Error loading activities:", error.message);
-      return;
-    }
-
-    activities = data || [];
-    renderActivities();
-  }
-
-  async function addManualActivity(){
-    const note = document.getElementById("manualActivityNote").value.trim();
-
-    if(!note){
-      alert("Add an activity note first.");
-      return;
-    }
-
-    await logActivity(null, "Manual Note", note);
-
-    document.getElementById("manualActivityNote").value = "";
-    alert("Activity added.");
-  }
-
-  function renderActivities(){
-    const activityList = document.getElementById("activityList");
-
-    if(!activityList) return;
-
-    activityList.innerHTML = "";
-
-    if(activities.length === 0){
-      activityList.innerHTML = "<p>No activity yet.</p>";
-      return;
-    }
-
-    activities.slice(0, 20).forEach(function(a){
-      const lead = leads.find(l => Number(l.id) === Number(a.lead_id));
-      const clientName = lead ? lead.name : "General";
-
-      activityList.innerHTML += `
-        <div class="activity-card">
-          <p><strong>${a.activity_type}</strong></p>
-          <p><strong>Client:</strong> ${clientName}</p>
-          <p>${a.activity_note}</p>
-          <p class="small">${a.created_at || ""}</p>
-        </div>
-      `;
-    });
-  }
-
-  async function loadLeads(){
-    const { data, error } = await db.from("leads").select("*").order("created_at", { ascending:false });
-    if(error){ alert("Error loading leads: " + error.message); return; }
-    leads = data || [];
-    renderLeads();
-  }
-
-  async function loadContracts(){
-    const { data, error } = await db.from("contracts").select("*").order("created_at", { ascending:false });
-    if(error){ alert("Error loading contracts: " + error.message); return; }
-    contracts = data || [];
-    renderContracts();
-    renderShoots();
-    renderBusinessStats();
-  }
-
-  async function saveLead(){
-    const editId = document.getElementById("editId").value;
-    const serviceValue = document.getElementById("service").value;
-
-    const lead = {
-      name: document.getElementById("name").value,
-      phone: document.getElementById("phone").value,
-      email: document.getElementById("email").value,
-      service: getServiceText(),
-      price: Number(serviceValue),
-      status: document.getElementById("status").value,
-      last_contacted: document.getElementById("lastContacted").value || null,
-      next_followup: document.getElementById("nextFollowUp").value || null,
-      notes: document.getElementById("notes").value
-    };
-
-    if(!lead.name){
-      alert("Add a client name first.");
-      return;
-    }
-
-    let result;
-    if(editId){
-      result = await db.from("leads").update(lead).eq("id", editId);
-    } else {
-      result = await db.from("leads").insert([lead]);
-    }
-
-    if(result.error){
-      alert("Error saving lead: " + result.error.message);
-      return;
-    }
-
-    resetForm();
-    loadLeads();
-  }
-
-  function editLead(id){
-    const lead = leads.find(l => l.id === id);
-    if(!lead) return;
-
-    document.getElementById("editId").value = lead.id;
-    document.getElementById("formTitle").innerText = "Edit Lead";
-    document.getElementById("name").value = lead.name || "";
-    document.getElementById("phone").value = lead.phone || "";
-    document.getElementById("email").value = lead.email || "";
-    document.getElementById("status").value = lead.status || "Inquiry";
-    document.getElementById("lastContacted").value = lead.last_contacted || "";
-    document.getElementById("nextFollowUp").value = lead.next_followup || "";
-    document.getElementById("notes").value = lead.notes || "";
-
-    document.getElementById("addlead").scrollIntoView({behavior:"smooth"});
-  }
-
-  function generateQuoteFromLead(id){
-    const lead = leads.find(l => l.id === id);
-    if(!lead) return;
-
-    document.getElementById("quoteLeadId").value = lead.id;
-    document.getElementById("quoteName").value = lead.name || "";
-    setQuoteServiceByText(lead.service || "");
-    document.getElementById("sessionDate").value = lead.next_followup || "";
-    document.getElementById("sessionLocation").value = extractLocationFromNotes(lead.notes) || "";
-    document.getElementById("travelFee").value = 0;
-
-    if(lead.service && lead.service.includes("Events")){
-      document.getElementById("eventHours").value = 1;
-    }
-
-    document.getElementById("quote").scrollIntoView({behavior:"smooth"});
-    alert("Quote form filled from lead. Add hours/travel if needed, then generate quote.");
-  }
-
-  function resetForm(){
-    document.getElementById("editId").value = "";
-    document.getElementById("formTitle").innerText = "Add New Lead";
-    document.getElementById("name").value = "";
-    document.getElementById("phone").value = "";
-    document.getElementById("email").value = "";
-    document.getElementById("lastContacted").value = "";
-    document.getElementById("nextFollowUp").value = "";
-    document.getElementById("notes").value = "";
-  }
-
-  async function deleteLead(id){
-    if(confirm("Delete this lead?")){
-      const { error } = await db.from("leads").delete().eq("id", id);
-      if(error) alert("Error deleting lead: " + error.message);
-      loadLeads();
-    }
-  }
-
-  async function deleteContract(id){
-    if(confirm("Delete this contract/payment/shoot? This only deletes this one record.")){
-      const { error } = await db.from("contracts").delete().eq("id", id);
-
-      if(error){
-        alert("Error deleting contract: " + error.message);
-        return;
-      }
-
-      alert("Contract deleted.");
-      loadContracts();
-    }
-  }
-
-  async function markBooked(id){
-    const { error } = await db.from("leads").update({ status:"Booked" }).eq("id", id);
-    if(error) alert("Error: " + error.message);
-    loadLeads();
-  }
-
-  async function markContacted(id){
-    const today = new Date().toISOString().split("T")[0];
-    const { error } = await db.from("leads").update({ status:"Contacted", last_contacted:today }).eq("id", id);
-    if(error) alert("Error: " + error.message);
-    loadLeads();
-  }
-
-  function getFollowUpStatus(date){
-    if(!date) return "<span class='yellow'>No follow-up date set</span>";
-    const today = new Date();
-    const followUpDate = new Date(date);
-    const diffDays = Math.ceil((followUpDate - today) / (1000 * 60 * 60 * 24));
-    if(diffDays < 0) return "<span class='red'>Overdue</span>";
-    if(diffDays <= 2) return "<span class='yellow'>Due soon</span>";
-    return "<span class='green'>On track</span>";
-  }
-
-  function generateReply(id){
-    const lead = leads.find(l => l.id === id);
-
-    const reply = `Hi ${lead.name},
-
-Thank you for reaching out to Caz Visuals.
-
-I'd love to help with your ${lead.service}. Based on what you shared, this would be a great fit for your session.
-
-Here are the next steps:
-1. Confirm your preferred date and location.
-2. I will send over the final details.
-3. Once confirmed, we can lock in your session.
-
-Looking forward to working with you!
-
-- Caz Visuals`;
-
-    document.getElementById("reply-" + id).innerText = reply;
-  }
-
-  function copyReply(id){
-    const text = document.getElementById("reply-" + id).innerText;
-    if(!text){
-      alert("Generate a reply first.");
-      return;
-    }
-
-    navigator.clipboard.writeText(text);
-    alert("Reply copied.");
-  }
-
-  function getQuotePricing(){
-    const service = document.getElementById("quoteService").value;
-    const travelFee = Number(document.getElementById("travelFee").value || 0);
-    const hours = Number(document.getElementById("eventHours").value || 1);
-
-    let servicePrice = 0;
-
-    if(service.includes("Events")){
-      servicePrice = 200 * hours;
-    } else if(service.includes("$150")){
-      servicePrice = 150;
-    } else if(service.includes("$300")){
-      servicePrice = 300;
-    } else if(service.includes("$350")){
-      servicePrice = 350;
-    } else if(service.includes("$250")){
-      servicePrice = 250;
-    }
-
-    const total = servicePrice + travelFee;
-    const deposit = Math.round(total * 0.50);
-    const balance = total - deposit;
-
-    return { service, servicePrice, travelFee, hours, total, deposit, balance };
-  }
-
-  function validateQuoteForm(){
-    const name = document.getElementById("quoteName").value.trim();
-    const service = document.getElementById("quoteService").value;
-    const hours = Number(document.getElementById("eventHours").value || 0);
-
-    if(!name){
-      alert("Add a client name before generating a quote.");
-      return false;
-    }
-
-    if(!service){
-      alert("Choose a service before generating a quote.");
-      return false;
-    }
-
-    if(service.includes("Events") && hours <= 0){
-      alert("Enter event hours before generating an event quote.");
-      return false;
-    }
-
-    return true;
-  }
-
-  function buildContractText(data){
-    const hoursLine = data.hours
-      ? `Event Coverage:\n${data.hours} hour(s) at $200/hr\n\n`
-      : "";
-
-    const contractNumberLine = data.contract_number
-      ? `Contract #:\n${data.contract_number}\n\n`
-      : "";
-
-    return `CAZ VISUALS PHOTOGRAPHY / VIDEOGRAPHY AGREEMENT
-
-${contractNumberLine}Client:
-${data.client_name}
-
-Service:
-${data.service}
-
-${hoursLine}Session Date:
-${data.session_date || "To be confirmed"}
-
-Location:
-${data.location || "To be confirmed"}
-
-Total:
-$${data.total}
-
-Non-Refundable Deposit:
-$${data.deposit}
-
-Balance Due:
-$${data.balance}
-
-AGREEMENT TERMS:
-
-1. Booking and Deposit
-A 50% non-refundable deposit is required to reserve the session date. The date is not officially reserved until the deposit is received.
-
-2. Remaining Balance
-The remaining balance is due before or on the day of the session unless otherwise agreed in writing.
-
-3. Rescheduling
-Client may request to reschedule due to weather, emergency, or scheduling conflict. Caz Visuals will make reasonable efforts to provide a new available date.
-
-4. Cancellation
-The deposit is non-refundable because it reserves time on the calendar and blocks availability for other clients.
-
-5. Delivery
-Final images, videos, or galleries will be delivered within the timeline discussed with the client. Delivery time may vary based on project size.
-
-6. Creative Rights
-Caz Visuals retains copyright ownership of images and videos created. Client receives permission to use final delivered content for personal, promotional, or agreed business use.
-
-7. Portfolio Use
-Caz Visuals may use final images or videos for portfolio, website, social media, and promotional purposes unless the client requests privacy in writing.
-
-8. Client Responsibility
-Client is responsible for arriving on time, securing any required location permissions, and communicating specific needs before the session.
-
-By approving this agreement and submitting the deposit, the client agrees to the terms above.
-
-Caz Visuals
-Operated by ImCaz Photography LLC`;
-  }
-
-  function generateQuote(){
-    if(!validateQuoteForm()) return;
-
-    const name = document.getElementById("quoteName").value.trim();
-    const sessionDate = document.getElementById("sessionDate").value;
-    const location = document.getElementById("sessionLocation").value;
-    const pricing = getQuotePricing();
-    const quoteNumber = "CV-" + Date.now();
-
-    const hoursLine = pricing.service.includes("Events")
-      ? `Event Hours:\n${pricing.hours} hour(s)\n\nHourly Rate:\n$200/hr\n\n`
-      : "";
-
-    currentQuote =
-`CAZ VISUALS PROPOSAL
-
-Quote #: ${quoteNumber}
-
-Client:
-${name}
-
-Session Date:
-${sessionDate || "To be confirmed"}
-
-Location:
-${location || "To be confirmed"}
-
-Service:
-${pricing.service}
-
-${hoursLine}Service Price:
-$${pricing.servicePrice}
-
-Travel Fee:
-$${pricing.travelFee}
-
-Total:
-$${pricing.total}
-
-Non-Refundable Deposit Required:
-$${pricing.deposit}
-
-Balance Due:
-$${pricing.balance}
-
-Terms:
-A 50% non-refundable deposit is required to reserve the session date. The remaining balance is due before or on the day of the session. Final delivery timeline and gallery details will be confirmed after booking.
-
-Next Steps:
-1. Review and approve this quote.
-2. Confirm date, time, and location.
-3. Submit 50% non-refundable deposit to lock in your session.
-4. Caz Visuals will send final booking details.
-
-Thank you for choosing Caz Visuals.`;
-
-    currentQuoteData = {
-      lead_id: document.getElementById("quoteLeadId").value || null,
-      client_name: name,
-      service: pricing.service,
-      session_date: sessionDate || null,
-      location: location || "To be confirmed",
-      hours: pricing.service.includes("Events") ? pricing.hours : null,
-      travel_fee: pricing.travelFee,
-      total: pricing.total,
-      deposit: pricing.deposit,
-      balance: pricing.balance,
-      quote_text: currentQuote
-    };
-
-    currentSavedQuoteId = null;
-    document.getElementById("quoteOutput").textContent = currentQuote;
-  }
-
-  async function saveQuote(){
-    if(!currentQuoteData){
-      alert("Generate a quote first.");
-      return;
-    }
-
-    const { data, error } = await db.from("quotes").insert([currentQuoteData]).select();
-
-    if(error){
-      alert("Error saving quote: " + error.message);
-      return;
-    }
-
-    currentSavedQuoteId = data && data[0] ? data[0].id : null;
-    await updateLeadStatus(currentQuoteData.lead_id, "Quote Sent");
-    await logActivity(currentQuoteData.lead_id, "Quote Sent", "Quote saved for " + currentQuoteData.service + " totaling $" + currentQuoteData.total + ".");
-    alert("Quote saved.");
-  }
-
-  async function convertQuoteToContract(){
-    if(!currentQuoteData){
-      alert("Generate a quote first.");
-      return;
-    }
-
-    if(!currentSavedQuoteId){
-      const { data, error } = await db.from("quotes").insert([currentQuoteData]).select();
-
-      if(error){
-        alert("Error saving quote first: " + error.message);
-        return;
-      }
-
-      currentSavedQuoteId = data && data[0] ? data[0].id : null;
-      await updateLeadStatus(currentQuoteData.lead_id, "Quote Sent");
-      await logActivity(currentQuoteData.lead_id, "Quote Sent", "Quote saved for " + currentQuoteData.service + " totaling $" + currentQuoteData.total + ".");
-    }
-
-    const existing = await db
       .from("contracts")
-      .select("id")
-      .eq("quote_id", currentSavedQuoteId)
+      .select("*")
+      .eq("id", contractId)
       .maybeSingle();
 
-    if(existing.data){
-      alert("A contract already exists for this quote.");
-      return;
-    }
-
-    const contractNumber = generateContractNumber();
-    const contractText = buildContractText({
-      ...currentQuoteData,
-      contract_number: contractNumber
-    });
-
-    const contractData = {
-      lead_id: currentQuoteData.lead_id || null,
-      quote_id: currentSavedQuoteId,
-      contract_number: contractNumber,
-      client_name: currentQuoteData.client_name,
-      service: currentQuoteData.service,
-      session_date: currentQuoteData.session_date || null,
-      location: currentQuoteData.location || "To be confirmed",
-      hours: currentQuoteData.hours || null,
-      total: currentQuoteData.total,
-      deposit: currentQuoteData.deposit,
-      balance: currentQuoteData.balance,
-      contract_text: contractText,
-      signed: false,
-      deposit_paid: false,
-      balance_paid: false,
-      payment_status: "awaiting deposit"
-    };
-
-    const { error } = await db.from("contracts").insert([contractData]);
-
     if(error){
-      alert("Error creating contract: " + error.message);
+      document.getElementById("loadingBox").innerHTML =
+        "<h2>Error Loading Contract</h2><p>" + error.message + "</p>";
       return;
     }
 
-    currentContract = contractText;
-    document.getElementById("contractOutput").textContent = currentContract;
+    if(!data){
+      document.getElementById("loadingBox").innerHTML =
+        "<h2>Contract Not Found</h2><p>No contract was found for this link.</p>";
+      return;
+    }
 
-    await updateLeadStatus(currentQuoteData.lead_id, "Booked");
-    await logActivity(currentQuoteData.lead_id, "Contract Created", "Contract " + contractNumber + " created for $" + currentQuoteData.total + ".");
-    alert("Contract created: " + contractNumber);
-    loadContracts();
+    currentContract = data;
+    renderContract(data);
   }
 
-  function copyQuote(){
-    if(!currentQuote){
-      alert("Generate a quote first.");
-      return;
-    }
+  function renderContract(contract){
+    document.getElementById("loadingBox").style.display = "none";
+    document.getElementById("portalContent").style.display = "block";
 
-    navigator.clipboard.writeText(currentQuote);
-    alert("Quote copied.");
+    document.getElementById("clientName").innerText = contract.client_name || "Client";
+    document.getElementById("contractNumber").innerText = contract.contract_number || "Not assigned";
+    document.getElementById("service").innerText = contract.service || "";
+    document.getElementById("sessionDate").innerText = contract.session_date || "To be confirmed";
+    document.getElementById("location").innerText = contract.location || "To be confirmed";
+    document.getElementById("hours").innerText = contract.hours || "N/A";
+
+    document.getElementById("total").innerText = contract.total || 0;
+    document.getElementById("deposit").innerText = contract.deposit || 0;
+    document.getElementById("balance").innerText = contract.balance || 0;
+
+    document.getElementById("signedStatus").innerHTML = yesNo(contract.signed);
+    document.getElementById("depositStatus").innerHTML = yesNo(contract.deposit_paid);
+    document.getElementById("balanceStatus").innerHTML = yesNo(contract.balance_paid);
+    document.getElementById("paymentStatus").innerText = contract.payment_status || "awaiting deposit";
+
+    document.getElementById("paymentDeposit").innerText = contract.deposit || 0;
+    document.getElementById("paymentBalance").innerText = contract.balance || 0;
+
+    document.getElementById("contractText").innerText =
+      contract.contract_text || "No contract text found.";
+
+    if(contract.signed){
+      document.getElementById("signButton").innerText = "Agreement Already Signed";
+      document.getElementById("signButton").disabled = true;
+      document.getElementById("signMessage").innerText =
+        "This agreement has already been approved.";
+    }
   }
 
-  function generateContract(){
-    if(!currentQuoteData){
-      alert("Generate a quote first.");
-      return;
-    }
-
-    const contractNumber = generateContractNumber();
-    currentContract = buildContractText({
-      ...currentQuoteData,
-      contract_number: contractNumber
-    });
-
-    document.getElementById("contractOutput").textContent = currentContract;
-  }
-
-  async function saveContract(){
-    if(!currentContract || !currentQuoteData){
-      alert("Generate a contract first.");
-      return;
-    }
-
-    const contractNumber = generateContractNumber();
-
-    const contractData = {
-      lead_id: currentQuoteData.lead_id || null,
-      quote_id: currentSavedQuoteId,
-      contract_number: contractNumber,
-      client_name: currentQuoteData.client_name,
-      service: currentQuoteData.service,
-      session_date: currentQuoteData.session_date || null,
-      location: currentQuoteData.location || "To be confirmed",
-      hours: currentQuoteData.hours || null,
-      total: currentQuoteData.total,
-      deposit: currentQuoteData.deposit,
-      balance: currentQuoteData.balance,
-      contract_text: currentContract,
-      signed: false,
-      deposit_paid: false,
-      balance_paid: false,
-      payment_status: "awaiting deposit"
-    };
-
-    const { error } = await db.from("contracts").insert([contractData]);
-
-    if(error){
-      alert("Error saving contract: " + error.message);
-      return;
-    }
-
-    await updateLeadStatus(currentQuoteData.lead_id, "Booked");
-    await logActivity(currentQuoteData.lead_id, "Contract Saved", "Contract " + contractNumber + " saved for $" + currentQuoteData.total + ".");
-    alert("Contract saved: " + contractNumber);
-    loadContracts();
-  }
-
-  function copyContract(){
+  async function signContract(){
     if(!currentContract){
-      alert("Generate a contract first.");
+      alert("Contract not loaded.");
       return;
     }
 
-    navigator.clipboard.writeText(currentContract);
-    alert("Contract copied.");
-  }
+    const signatureName = document.getElementById("signatureName").value.trim();
 
-  async function markSigned(id){
-    const { error } = await db.from("contracts").update({ signed:true }).eq("id", id);
-    if(error) alert("Error: " + error.message);
-    loadContracts();
-  }
-
-  async function markDepositPaid(id){
-    const contract = contracts.find(c => c.id === id);
-    if(!contract) return;
-
-    const newStatus = contract.balance_paid ? "paid in full" : "deposit paid";
-
-    const { error } = await db.from("contracts")
-      .update({ deposit_paid:true, payment_status:newStatus })
-      .eq("id", id);
-
-    if(error) alert("Error: " + error.message);
-
-    await updateLeadStatus(contract.lead_id, "Deposit Received");
-    await logActivity(contract.lead_id, "Deposit Received", "Deposit marked paid for " + contract.client_name + ": $" + contract.deposit + ".");
-    loadContracts();
-  }
-
-  async function markBalancePaid(id){
-    const contract = contracts.find(c => c.id === id);
-    if(!contract) return;
-
-    const { error } = await db.from("contracts")
-      .update({ balance_paid:true, payment_status:"paid in full" })
-      .eq("id", id);
-
-    if(error) alert("Error: " + error.message);
-
-    await updateLeadStatus(contract.lead_id, "Paid In Full");
-    await logActivity(contract.lead_id, "Paid In Full", "Balance marked paid for " + contract.client_name + ": $" + contract.balance + ".");
-    loadContracts();
-  }
-
-
-  function viewClient(id){
-    const lead = leads.find(l => l.id === id);
-    if(!lead) return;
-
-    const clientContracts = contracts.filter(c => 
-      (c.lead_id && String(c.lead_id) === String(lead.id)) ||
-      (c.client_name && lead.name && c.client_name.toLowerCase() === lead.name.toLowerCase())
-    );
-
-    let contractHtml = "";
-
-    if(clientContracts.length === 0){
-      contractHtml = "<p>No contracts found for this client yet.</p>";
-    } else {
-      clientContracts.forEach(function(c){
-        contractHtml += `
-          <div class="contract-card">
-            <p><strong>Contract #:</strong> ${c.contract_number || "Not assigned"}</p>
-            <p><strong>Service:</strong> ${c.service}</p>
-            <p><strong>Session Date:</strong> ${c.session_date || "Not set"}</p>
-            <p><strong>Location:</strong> ${c.location || "Not set"}</p>
-            <p><strong>Total:</strong> $${c.total}</p>
-            <p><strong>Deposit:</strong> $${c.deposit}</p>
-            <p><strong>Balance:</strong> $${c.balance}</p>
-            <p><strong>Signed:</strong> ${c.signed ? "Yes" : "No"}</p>
-            <p><strong>Deposit Paid:</strong> ${c.deposit_paid ? "Yes" : "No"}</p>
-            <p><strong>Balance Paid:</strong> ${c.balance_paid ? "Yes" : "No"}</p>
-            <p><strong>Payment Status:</strong> ${c.payment_status || "awaiting deposit"}</p>
-          </div>
-        `;
-      });
-    }
-
-    document.getElementById("clientDetailBox").innerHTML = `
-      <div class="lead-card">
-        <h3>${lead.name}</h3>
-        <p><strong>Status:</strong> ${lead.status}</p>
-        <p><strong>Service:</strong> ${lead.service}</p>
-        <p><strong>Phone:</strong> ${lead.phone || ""}</p>
-        <p><strong>Email:</strong> ${lead.email || ""}</p>
-        <p><strong>Last Contacted:</strong> ${lead.last_contacted || "Not set"}</p>
-        <p><strong>Next Follow-Up:</strong> ${lead.next_followup || "Not set"}</p>
-        <p><strong>Notes:</strong></p>
-        <p class="small">${lead.notes || "No notes yet."}</p>
-
-        <button onclick="generateQuoteFromLead(${lead.id})">Generate Quote From This Client</button>
-        <button onclick="editLead(${lead.id})">Edit Client</button>
-      </div>
-
-      <h3 style="color:#d4af37;">Contracts & Payments</h3>
-      ${contractHtml}
-    `;
-
-    document.getElementById("clientDetail").scrollIntoView({behavior:"smooth"});
-  }
-
-  function renderBusinessStats(){
-    let pipelineRevenue = 0;
-    let signedCount = 0;
-    let depositsReceived = 0;
-    let outstanding = 0;
-
-    contracts.forEach(function(c){
-      pipelineRevenue += Number(c.total || 0);
-      if(c.signed) signedCount++;
-      if(c.deposit_paid) depositsReceived += Number(c.deposit || 0);
-      if(!c.balance_paid) outstanding += Number(c.balance || 0);
-    });
-
-    document.getElementById("pipelineRevenue").innerText = pipelineRevenue;
-    document.getElementById("signedContracts").innerText = signedCount;
-    document.getElementById("depositsReceived").innerText = depositsReceived;
-    document.getElementById("outstandingBalance").innerText = outstanding;
-  }
-
-  function renderShoots(){
-    const shootList = document.getElementById("shootList");
-    shootList.innerHTML = "";
-
-    const upcoming = contracts
-      .filter(c => c.session_date)
-      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
-
-    if(upcoming.length === 0){
-      shootList.innerHTML = "<p>No upcoming shoots yet.</p>";
+    if(!signatureName){
+      alert("Please type your full name to approve the agreement.");
       return;
     }
 
-    upcoming.forEach(function(c){
-      shootList.innerHTML += `
-        <div class="shoot-card">
-          <h3>${c.session_date}</h3>
-          <p><strong>Client:</strong> ${c.client_name}</p>
-          <p><strong>Service:</strong> ${c.service}</p>
-          <p><strong>Location:</strong> ${c.location || "To be confirmed"}</p>
-          <p><strong>Status:</strong> ${c.payment_status || "awaiting deposit"}</p>
-        </div>
-      `;
-    });
-  }
+    const { error } = await db
+      .from("contracts")
+      .update({
+        signed: true
+      })
+      .eq("id", currentContract.id);
 
-  function renderContracts(){
-    const contractList = document.getElementById("contractList");
-    contractList.innerHTML = "";
-
-    if(contracts.length === 0){
-      contractList.innerHTML = "<p>No contracts yet.</p>";
+    if(error){
+      alert("Error signing contract: " + error.message);
       return;
     }
 
-    contracts.forEach(function(contract){
-      contractList.innerHTML += `
-        <div class="contract-card">
-          <h3>${contract.client_name}</h3>
-          <p><strong>Contract #:</strong> ${contract.contract_number || "Not assigned"}</p>
-          <p><strong>Service:</strong> ${contract.service}</p>
-          <p><strong>Total:</strong> $${contract.total}</p>
-          <p><strong>Deposit:</strong> $${contract.deposit}</p>
-          <p><strong>Balance:</strong> $${contract.balance}</p>
-          <p><strong>Signed:</strong> ${contract.signed ? "Yes" : "No"}</p>
-          <p><strong>Deposit Paid:</strong> ${contract.deposit_paid ? "Yes" : "No"}</p>
-          <p><strong>Balance Paid:</strong> ${contract.balance_paid ? "Yes" : "No"}</p>
-          <p><strong>Status:</strong> ${contract.payment_status || "awaiting deposit"}</p>
+    await db.from("activities").insert([{
+      lead_id: currentContract.lead_id || null,
+      activity_type: "Contract Signed",
+      activity_note: "Client approved agreement online. Signature typed: " + signatureName + ".",
+      created_by: "Client Portal"
+    }]);
 
-          <button onclick="markSigned(${contract.id})">Mark Signed</button>
-          <button onclick="markDepositPaid(${contract.id})">Mark Deposit Paid</button>
-          <button onclick="markBalancePaid(${contract.id})">Mark Balance Paid</button>
-          <button class="delete-btn" onclick="deleteContract(${contract.id})">Delete This Contract</button>
-        </div>
-      `;
-    });
+    alert("Agreement approved. Thank you!");
+    window.location.reload();
   }
 
-  function renderLeads(){
-    const leadList = document.getElementById("leadList");
-    leadList.innerHTML = "";
-
-    let bookings = 0, revenue = 0, inquiry = 0, contacted = 0, quote = 0, delivered = 0, depositReceived = 0, paidInFull = 0;
-
-    leads.forEach(function(lead){
-      if(lead.status === "Booked"){ bookings++; revenue += Number(lead.price || 0); }
-      if(lead.status === "Inquiry") inquiry++;
-      if(lead.status === "Contacted") contacted++;
-      if(lead.status === "Quote Sent") quote++;
-      if(lead.status === "Deposit Received") depositReceived++;
-      if(lead.status === "Paid In Full") paidInFull++;
-      if(lead.status === "Delivered") delivered++;
-
-      leadList.innerHTML += `
-        <div class="lead-card">
-          <h3>${lead.name}</h3>
-          <p><strong>Service:</strong> ${lead.service}</p>
-          <p><strong>Status:</strong> ${lead.status}</p>
-          <p><strong>Phone:</strong> ${lead.phone || ""}</p>
-          <p><strong>Email:</strong> ${lead.email || ""}</p>
-          <p><strong>Last Contacted:</strong> ${lead.last_contacted || "Not set"}</p>
-          <p><strong>Next Follow-Up:</strong> ${lead.next_followup || "Not set"}</p>
-          <p><strong>Follow-Up Status:</strong> ${getFollowUpStatus(lead.next_followup)}</p>
-          <p class="small">${lead.notes || ""}</p>
-
-          <button onclick="viewClient(${lead.id})">View Client</button>
-          <button onclick="generateQuoteFromLead(${lead.id})">Generate Quote From Lead</button>
-          <button onclick="generateReply(${lead.id})">Generate Client Reply</button>
-          <button onclick="copyReply(${lead.id})">Copy Reply</button>
-          <div class="reply-box" id="reply-${lead.id}"></div>
-
-          <button onclick="markContacted(${lead.id})">Mark Contacted Today</button>
-          <button onclick="markBooked(${lead.id})">Mark Booked</button>
-          <button class="edit-btn" onclick="editLead(${lead.id})">Edit Lead</button>
-          <button class="delete-btn" onclick="deleteLead(${lead.id})">Delete Lead</button>
-        </div>
-      `;
-    });
-
-    const avg = bookings > 0 ? Math.round(revenue / bookings) : 0;
-
-    document.getElementById("leadCount").innerText = leads.length;
-    document.getElementById("bookingCount").innerText = bookings;
-    document.getElementById("revenueCount").innerText = revenue;
-    document.getElementById("avgBooking").innerText = avg;
-    document.getElementById("inquiryCount").innerText = inquiry;
-    document.getElementById("contactedCount").innerText = contacted;
-    document.getElementById("quoteCount").innerText = quote;
-    document.getElementById("bookedPipelineCount").innerText = bookings;
-    document.getElementById("depositReceivedCount").innerText = depositReceived;
-    document.getElementById("paidInFullCount").innerText = paidInFull;
-    document.getElementById("deliveredCount").innerText = delivered;
+  function payDepositPlaceholder(){
+    alert("Stripe deposit payment will be added next.");
   }
 
-
-  function aiFollowUps(){
-    const needingFollowUp = leads.filter(l =>
-      l.status !== "Booked" &&
-      l.status !== "Delivered" &&
-      l.status !== "Closed" &&
-      l.next_followup
-    );
-
-    let output = "CLIENTS NEEDING FOLLOW-UP\n\n";
-
-    if(needingFollowUp.length === 0){
-      output += "No follow-ups needed.";
-    } else {
-      needingFollowUp.forEach(l => {
-        output += l.name + " - " + l.service + "\n";
-        output += "Follow-Up: " + l.next_followup + "\n\n";
-      });
-    }
-
-    document.getElementById("aiOutput").innerText = output;
+  function payBalancePlaceholder(){
+    alert("Stripe balance payment will be added next.");
   }
 
-  function aiOutstanding(){
-    const outstanding = contracts.filter(c => !c.balance_paid);
-
-    let total = 0;
-    let output = "OUTSTANDING PAYMENTS\n\n";
-
-    if(outstanding.length === 0){
-      output += "No outstanding payments.\n\n";
-    } else {
-      outstanding.forEach(c => {
-        total += Number(c.balance || 0);
-        output += c.client_name + "\n";
-        output += "Balance: $" + c.balance + "\n\n";
-      });
-    }
-
-    output += "TOTAL OUTSTANDING: $" + total;
-    document.getElementById("aiOutput").innerText = output;
-  }
-
-  function aiUpcoming(){
-    const upcoming = contracts
-      .filter(c => c.session_date)
-      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
-
-    let output = "UPCOMING SHOOTS\n\n";
-
-    if(upcoming.length === 0){
-      output += "No upcoming shoots.";
-    } else {
-      upcoming.forEach(c => {
-        output += c.session_date + "\n";
-        output += c.client_name + "\n";
-        output += c.service + "\n\n";
-      });
-    }
-
-    document.getElementById("aiOutput").innerText = output;
-  }
-
-  function aiRevenue(){
-    let bookedRevenue = 0;
-    let deposits = 0;
-    let outstanding = 0;
-
-    contracts.forEach(c => {
-      bookedRevenue += Number(c.total || 0);
-
-      if(c.deposit_paid){
-        deposits += Number(c.deposit || 0);
-      }
-
-      if(!c.balance_paid){
-        outstanding += Number(c.balance || 0);
-      }
-    });
-
-    let output = "REVENUE SUMMARY\n\n";
-    output += "Booked Revenue: $" + bookedRevenue + "\n\n";
-    output += "Deposits Received: $" + deposits + "\n\n";
-    output += "Outstanding Balance: $" + outstanding;
-
-    document.getElementById("aiOutput").innerText = output;
-  }
-
-  function aiDailyBrief(){
-    const today = new Date();
-
-    const followUps = leads.filter(l => {
-      if(!l.next_followup) return false;
-      return new Date(l.next_followup) <= today &&
-        l.status !== "Delivered" &&
-        l.status !== "Closed";
-    });
-
-    const upcoming = contracts
-      .filter(c => c.session_date)
-      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
-      .slice(0, 5);
-
-    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
-    const unpaidBalances = contracts.filter(c => !c.balance_paid);
-
-    let bookedRevenue = 0;
-    let depositsReceived = 0;
-    let outstandingBalance = 0;
-
-    contracts.forEach(c => {
-      bookedRevenue += Number(c.total || 0);
-
-      if(c.deposit_paid){
-        depositsReceived += Number(c.deposit || 0);
-      }
-
-      if(!c.balance_paid){
-        outstandingBalance += Number(c.balance || 0);
-      }
-    });
-
-    let output = "DAILY BUSINESS BRIEF\n\n";
-
-    output += "Follow-Ups Due: " + followUps.length + "\n";
-    followUps.slice(0, 5).forEach(l => {
-      output += "- " + l.name + " | " + l.service + " | " + l.next_followup + "\n";
-    });
-
-    output += "\nUpcoming Shoots:\n";
-    if(upcoming.length === 0){
-      output += "- No upcoming shoots scheduled.\n";
-    } else {
-      upcoming.forEach(c => {
-        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
-      });
-    }
-
-    output += "\nPayments:\n";
-    output += "- Clients without deposit paid: " + unpaidDeposits.length + "\n";
-    output += "- Clients with balance still open: " + unpaidBalances.length + "\n";
-    output += "- Outstanding balance: $" + outstandingBalance + "\n";
-
-    output += "\nRevenue:\n";
-    output += "- Booked revenue: $" + bookedRevenue + "\n";
-    output += "- Deposits received: $" + depositsReceived + "\n";
-
-    output += "\nRecommended Action:\n";
-
-    if(followUps.length > 0){
-      output += "Start by following up with " + followUps[0].name + ".";
-    } else if(unpaidDeposits.length > 0){
-      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
-    } else if(upcoming.length > 0){
-      output += "Confirm final details for " + upcoming[0].client_name + ".";
-    } else {
-      output += "No urgent action right now.";
-    }
-
-    document.getElementById("dailyBriefOutput").innerText = output;
-  }
-
-  loadLeads();
-  loadContracts();
-  loadActivities();
+  loadClientPortal();
 </script>
 
 </body>

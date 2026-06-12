@@ -4920,7 +4920,7 @@ async function sendTestEmail(){
       document.getElementById("emailOutput").innerText =
         "Email failed: " + JSON.stringify(result);
 
-      alert("Email failed.");
+      alert("Email failed:\n\n" + JSON.stringify(result, null, 2));
 
       return;
     }

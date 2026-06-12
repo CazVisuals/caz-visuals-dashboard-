@@ -3986,6 +3986,10 @@ Thank you for choosing Caz Visuals.`;
           <button onclick="markDepositPaid(${contract.id})">Mark Deposit Paid</button>
           <button onclick="markBalancePaid(${contract.id})">Mark Balance Paid</button>
 
+          <button onclick="sendPortalLinkEmail(${contract.id})">
+  Send Portal Link Email
+</button>
+
           <button onclick="copyPortalLink('${contract.contract_number}')">Copy Client Portal Link</button>
           <button onclick="copyContractEmail(${contract.id})">Copy Contract Email</button>
           <button onclick="copyDepositReminder(${contract.id})">Copy Deposit Reminder</button>
@@ -4940,6 +4944,97 @@ async function sendTestEmail(){
   }
 
 }
+
+  async function sendPortalLinkEmail(contractId){
+
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const lead = leads.find(l =>
+    Number(l.id) === Number(contract.lead_id)
+  );
+
+  const clientEmail = lead ? lead.email : "";
+
+  if(!clientEmail){
+    alert("No client email found. Make sure this contract is connected to a lead with an email.");
+    return;
+  }
+
+  if(!contract.contract_number){
+    alert("This contract does not have a contract number.");
+    return;
+  }
+
+  const portalLink =
+    "https://cazvisuals.netlify.app/client.html?contract=" +
+    encodeURIComponent(contract.contract_number);
+
+  const subject = "Your Caz Visuals Agreement Is Ready";
+
+  const message =
+`Hi ${contract.client_name},
+
+Your Caz Visuals agreement is ready for review.
+
+Please use the secure client portal link below to review your session details and approve your agreement:
+
+${portalLink}
+
+Session Details:
+Service: ${contract.service}
+Date: ${contract.session_date || "To be confirmed"}
+Location: ${contract.location || "To be confirmed"}
+Total: $${contract.total}
+Deposit: $${contract.deposit}
+Balance: $${contract.balance}
+
+Once the agreement is approved, we can move forward with the next step.
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    const response = await fetch("/.netlify/functions/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        to: clientEmail,
+        subject: subject,
+        message: message
+      })
+    });
+
+    const result = await response.json();
+
+    if(!response.ok){
+      alert("Portal email failed:\n\n" + JSON.stringify(result, null, 2));
+      return;
+    }
+
+    await logActivity(
+      contract.lead_id || null,
+      "Portal Link Sent",
+      "Portal link emailed to " + clientEmail + " for contract " + contract.contract_number + "."
+    );
+
+    alert("Portal link email sent to " + clientEmail + ".");
+
+  } catch(error){
+
+    alert("Portal email error:\n\n" + error.message);
+
+  }
+
+}
+
   
   loadLeads();
   loadContracts();

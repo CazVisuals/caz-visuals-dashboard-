@@ -5568,6 +5568,32 @@ function copyOpenAIOutput(){
   alert("AI output copied.");
 }
 
+  async function sendTestEmail(){
+  const output = document.getElementById("emailOutput");
+
+  output.innerText = "Sending test email...";
+
+  const response = await fetch("/.netlify/functions/send-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      to: "cazimirconstant@gmail.com",
+      subject: "Caz Visuals CRM Test Email",
+      message: "Your Caz Visuals CRM email automation is working."
+    })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    output.innerText = "Email failed:\n" + JSON.stringify(data, null, 2);
+    return;
+  }
+
+  output.innerText = "Test email sent successfully.";
+}
   loadLeads();
   loadContracts();
   loadActivities();

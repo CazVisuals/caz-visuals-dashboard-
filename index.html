@@ -3989,9 +3989,10 @@ Thank you for choosing Caz Visuals.`;
           <button onclick="sendPortalLinkEmail(${contract.id})">
   Send Portal Link Email
 </button>
-<button onclick="sendDepositReminderEmail(${contract.id})">
-  Send Deposit Reminder Email
-</button>
+<button onclick="sendPortalLinkEmail(${contract.id})">Send Portal Link Email</button>
+<button onclick="sendContractPackageEmail(${contract.id})">Send Contract Package Email</button>
+<button onclick="sendDepositReminderEmail(${contract.id})">Send Deposit Reminder Email</button>
+<button onclick="sendBalanceReminderEmail(${contract.id})">Send Balance Reminder Email</button>
 
           <button onclick="copyPortalLink('${contract.contract_number}')">Copy Client Portal Link</button>
           <button onclick="copyContractEmail(${contract.id})">Copy Contract Email</button>
@@ -5117,6 +5118,345 @@ Caz Visuals`;
   } catch(error){
 
     alert("Deposit reminder email error:\n\n" + error.message);
+
+  }
+
+}
+
+function getLeadForContract(contract){
+  return leads.find(l => Number(l.id) === Number(contract.lead_id));
+}
+
+function getClientEmailForContract(contract){
+  const lead = getLeadForContract(contract);
+  return lead ? lead.email : "";
+}
+
+function getContractPortalLink(contract){
+  return "https://cazvisuals.netlify.app/client.html?contract=" +
+    encodeURIComponent(contract.contract_number);
+}
+
+async function sendCRMEmail(to, subject, message){
+  const response = await fetch("/.netlify/functions/send-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      to: to,
+      subject: subject,
+      message: message
+    })
+  });
+
+  const result = await response.json();
+
+  if(!response.ok){
+    throw new Error(JSON.stringify(result, null, 2));
+  }
+
+  return result;
+}
+
+async function sendContractPackageEmail(contractId){
+
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const clientEmail = getClientEmailForContract(contract);
+
+  if(!clientEmail){
+    alert("No client email found. Make sure this contract is connected to a lead with an email.");
+    return;
+  }
+
+  if(!contract.contract_number){
+    alert("This contract does not have a contract number.");
+    return;
+  }
+
+  const portalLink = getContractPortalLink(contract);
+
+  const subject = "Your Caz Visuals Agreement Is Ready";
+
+  const message =
+`Hi ${contract.client_name},
+
+Your Caz Visuals agreement is ready for review.
+
+Please use the secure client portal link below to review your session details and approve your agreement:
+
+${portalLink}
+
+Session Details:
+Service: ${contract.service}
+Date: ${contract.session_date || "To be confirmed"}
+Location: ${contract.location || "To be confirmed"}
+Total: $${contract.total}
+Deposit: $${contract.deposit}
+Balance: $${contract.balance}
+
+Next Steps:
+1. Open the client portal.
+2. Review your session details.
+3. Approve the agreement.
+4. Submit your deposit when payment is available.
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    await sendCRMEmail(clientEmail, subject, message);
+
+    await logActivity(
+      contract.lead_id || null,
+      "Contract Package Sent",
+      "Contract package emailed to " + clientEmail + " for contract " + contract.contract_number + "."
+    );
+
+    alert("Contract package email sent to " + clientEmail + ".");
+
+  } catch(error){
+
+    alert("Contract package email failed:\n\n" + error.message);
+
+  }
+
+}
+
+async function sendPortalLinkEmail(contractId){
+
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const clientEmail = getClientEmailForContract(contract);
+
+  if(!clientEmail){
+    alert("No client email found. Make sure this contract is connected to a lead with an email.");
+    return;
+  }
+
+  if(!contract.contract_number){
+    alert("This contract does not have a contract number.");
+    return;
+  }
+
+  const portalLink = getContractPortalLink(contract);
+
+  const subject = "Your Caz Visuals Client Portal";
+
+  const message =
+`Hi ${contract.client_name},
+
+Your Caz Visuals client portal is ready.
+
+You can review your agreement and session details here:
+
+${portalLink}
+
+Session Details:
+Service: ${contract.service}
+Date: ${contract.session_date || "To be confirmed"}
+Location: ${contract.location || "To be confirmed"}
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    await sendCRMEmail(clientEmail, subject, message);
+
+    await logActivity(
+      contract.lead_id || null,
+      "Portal Link Sent",
+      "Portal link emailed to " + clientEmail + " for contract " + contract.contract_number + "."
+    );
+
+    alert("Portal link email sent to " + clientEmail + ".");
+
+  } catch(error){
+
+    alert("Portal link email failed:\n\n" + error.message);
+
+  }
+
+}
+
+async function sendDepositReminderEmail(contractId){
+
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const clientEmail = getClientEmailForContract(contract);
+
+  if(!clientEmail){
+    alert("No client email found. Make sure this contract is connected to a lead with an email.");
+    return;
+  }
+
+  if(!contract.contract_number){
+    alert("This contract does not have a contract number.");
+    return;
+  }
+
+  const portalLink = getContractPortalLink(contract);
+
+  const subject = "Caz Visuals Deposit Reminder";
+
+  const message =
+`Hi ${contract.client_name},
+
+This is a friendly reminder that the non-refundable deposit for your Caz Visuals session is still pending.
+
+Deposit Due: $${contract.deposit}
+
+You can review your agreement and session details here:
+
+${portalLink}
+
+Once the deposit is received, your session date will be officially secured.
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    await sendCRMEmail(clientEmail, subject, message);
+
+    await logActivity(
+      contract.lead_id || null,
+      "Deposit Reminder Sent",
+      "Deposit reminder emailed to " + clientEmail + " for contract " + contract.contract_number + "."
+    );
+
+    alert("Deposit reminder email sent to " + clientEmail + ".");
+
+  } catch(error){
+
+    alert("Deposit reminder email failed:\n\n" + error.message);
+
+  }
+
+}
+
+async function sendBalanceReminderEmail(contractId){
+
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const clientEmail = getClientEmailForContract(contract);
+
+  if(!clientEmail){
+    alert("No client email found. Make sure this contract is connected to a lead with an email.");
+    return;
+  }
+
+  if(!contract.contract_number){
+    alert("This contract does not have a contract number.");
+    return;
+  }
+
+  const portalLink = getContractPortalLink(contract);
+
+  const subject = "Caz Visuals Balance Reminder";
+
+  const message =
+`Hi ${contract.client_name},
+
+This is a friendly reminder that the remaining balance for your Caz Visuals session is still open.
+
+Remaining Balance: $${contract.balance}
+
+You can review your session details here:
+
+${portalLink}
+
+Please let me know if you have any questions.
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    await sendCRMEmail(clientEmail, subject, message);
+
+    await logActivity(
+      contract.lead_id || null,
+      "Balance Reminder Sent",
+      "Balance reminder emailed to " + clientEmail + " for contract " + contract.contract_number + "."
+    );
+
+    alert("Balance reminder email sent to " + clientEmail + ".");
+
+  } catch(error){
+
+    alert("Balance reminder email failed:\n\n" + error.message);
+
+  }
+
+}
+
+async function sendFollowUpEmail(leadId){
+
+  const lead = leads.find(l => Number(l.id) === Number(leadId));
+
+  if(!lead){
+    alert("Lead not found.");
+    return;
+  }
+
+  if(!lead.email){
+    alert("No email found for this lead.");
+    return;
+  }
+
+  const subject = "Following Up From Caz Visuals";
+
+  const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I would be happy to help with the next steps whenever you are ready.
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    await sendCRMEmail(lead.email, subject, message);
+
+    await logActivity(
+      lead.id || null,
+      "Follow-Up Email Sent",
+      "Follow-up email sent to " + lead.email + "."
+    );
+
+    alert("Follow-up email sent to " + lead.email + ".");
+
+  } catch(error){
+
+    alert("Follow-up email failed:\n\n" + error.message);
 
   }
 

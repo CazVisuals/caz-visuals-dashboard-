@@ -215,6 +215,22 @@
   <button onclick="copyOfficeOutput()">Copy Office Manager Output</button>
 </div>
 
+  <div class="card" id="openAiAssistant">
+  <h2>OpenAI Assistant</h2>
+
+  <label>Ask your AI assistant</label>
+  <textarea id="aiPrompt" rows="4" placeholder="Example: What should I focus on today?"></textarea>
+
+  <button onclick="askOpenAI()">Ask OpenAI Assistant</button>
+  <button onclick="aiSuggestToday()">Suggest Today's Priorities</button>
+  <button onclick="aiWriteClientFollowUp()">Write Client Follow-Up</button>
+  <button onclick="copyOpenAIOutput()">Copy AI Output</button>
+
+  <div id="openAiOutput" class="reply-box"></div>
+</div>
+<a href="#openAiAssistant">OpenAI</a>
+
+
 
 <div class="card" id="taskCenter">
   <h2>AI Task Center</h2>
@@ -5461,7 +5477,97 @@ Caz Visuals`;
   }
 
 }
-  
+
+  function getCRMDataForAI(){
+  return {
+    leads: leads,
+    contracts: contracts,
+    activities: activities
+  };
+}
+
+async function callOpenAI(prompt){
+  const response = await fetch("/.netlify/functions/ai-assistant", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      prompt: prompt,
+      crmData: getCRMDataForAI()
+    })
+  });
+
+  const result = await response.json();
+
+  if(!response.ok){
+    throw new Error(JSON.stringify(result, null, 2));
+  }
+
+  return result.answer;
+}
+
+async function askOpenAI(){
+  const prompt = document.getElementById("aiPrompt").value.trim();
+
+  if(!prompt){
+    alert("Ask the AI something first.");
+    return;
+  }
+
+  document.getElementById("openAiOutput").innerText = "Thinking...";
+
+  try {
+    const answer = await callOpenAI(prompt);
+    document.getElementById("openAiOutput").innerText = answer;
+  } catch(error) {
+    document.getElementById("openAiOutput").innerText =
+      "AI error: " + error.message;
+  }
+}
+
+async function aiSuggestToday(){
+  document.getElementById("openAiOutput").innerText = "Thinking...";
+
+  try {
+    const answer = await callOpenAI(
+      "Review my CRM data and tell me exactly what I should focus on today. Prioritize follow-ups, unpaid deposits, open balances, upcoming shoots, and open tasks."
+    );
+
+    document.getElementById("openAiOutput").innerText = answer;
+  } catch(error) {
+    document.getElementById("openAiOutput").innerText =
+      "AI error: " + error.message;
+  }
+}
+
+async function aiWriteClientFollowUp(){
+  document.getElementById("openAiOutput").innerText = "Thinking...";
+
+  try {
+    const answer = await callOpenAI(
+      "Find the best lead or client who needs a follow-up and write a professional follow-up message I can send."
+    );
+
+    document.getElementById("openAiOutput").innerText = answer;
+  } catch(error) {
+    document.getElementById("openAiOutput").innerText =
+      "AI error: " + error.message;
+  }
+}
+
+function copyOpenAIOutput(){
+  const text = document.getElementById("openAiOutput").innerText;
+
+  if(!text){
+    alert("Generate an AI response first.");
+    return;
+  }
+
+  navigator.clipboard.writeText(text);
+  alert("AI output copied.");
+}
+
   loadLeads();
   loadContracts();
   loadActivities();

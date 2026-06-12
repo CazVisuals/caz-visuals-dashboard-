@@ -1048,7 +1048,12 @@ Thank you for choosing Caz Visuals.`;
           <button onclick="markSigned(${contract.id})">Mark Signed</button>
           <button onclick="markDepositPaid(${contract.id})">Mark Deposit Paid</button>
           <button onclick="markBalancePaid(${contract.id})">Mark Balance Paid</button>
+
           <button onclick="copyPortalLink('${contract.contract_number}')">Copy Client Portal Link</button>
+          <button onclick="copyContractEmail(${contract.id})">Copy Contract Email</button>
+          <button onclick="copyDepositReminder(${contract.id})">Copy Deposit Reminder</button>
+          <button onclick="copyBalanceReminder(${contract.id})">Copy Balance Reminder</button>
+
           <button class="delete-btn" onclick="deleteContract(${contract.id})">Delete This Contract</button>
         </div>
       `;
@@ -1056,18 +1061,113 @@ Thank you for choosing Caz Visuals.`;
   }
 
 
+  function getPortalLink(contractNumber){
+    return "https://cazvisuals.netlify.app/client.html?contract=" +
+      encodeURIComponent(contractNumber);
+  }
+
   function copyPortalLink(contractNumber){
     if(!contractNumber || contractNumber === "null" || contractNumber === "undefined"){
       alert("This contract does not have a contract number yet.");
       return;
     }
 
-    const link =
-      "https://cazvisuals.netlify.app/client.html?contract=" +
-      encodeURIComponent(contractNumber);
-
+    const link = getPortalLink(contractNumber);
     navigator.clipboard.writeText(link);
     alert("Client portal link copied.");
+  }
+
+  function copyContractEmail(id){
+    const contract = contracts.find(c => c.id === id);
+    if(!contract){
+      alert("Contract not found.");
+      return;
+    }
+
+    const link = getPortalLink(contract.contract_number);
+
+    const message =
+`Hi ${contract.client_name},
+
+Your Caz Visuals agreement is ready for review.
+
+Please use the secure client portal link below to review your session details and approve the agreement:
+
+${link}
+
+Session Details:
+Service: ${contract.service}
+Date: ${contract.session_date || "To be confirmed"}
+Location: ${contract.location || "To be confirmed"}
+Total: $${contract.total}
+Deposit: $${contract.deposit}
+Balance: $${contract.balance}
+
+Once the agreement is approved, your session will be ready for the next step.
+
+Thank you,
+Caz Visuals`;
+
+    navigator.clipboard.writeText(message);
+    alert("Contract email copied.");
+  }
+
+  function copyDepositReminder(id){
+    const contract = contracts.find(c => c.id === id);
+    if(!contract){
+      alert("Contract not found.");
+      return;
+    }
+
+    const link = getPortalLink(contract.contract_number);
+
+    const message =
+`Hi ${contract.client_name},
+
+Just a friendly reminder that the non-refundable deposit for your Caz Visuals session is still pending.
+
+Deposit Due: $${contract.deposit}
+
+You can review your agreement and session details here:
+
+${link}
+
+Once the deposit is received, your session date will be officially secured.
+
+Thank you,
+Caz Visuals`;
+
+    navigator.clipboard.writeText(message);
+    alert("Deposit reminder copied.");
+  }
+
+  function copyBalanceReminder(id){
+    const contract = contracts.find(c => c.id === id);
+    if(!contract){
+      alert("Contract not found.");
+      return;
+    }
+
+    const link = getPortalLink(contract.contract_number);
+
+    const message =
+`Hi ${contract.client_name},
+
+This is a friendly reminder that the remaining balance for your Caz Visuals session is still open.
+
+Remaining Balance: $${contract.balance}
+
+You can review your session details here:
+
+${link}
+
+Please let me know if you have any questions.
+
+Thank you,
+Caz Visuals`;
+
+    navigator.clipboard.writeText(message);
+    alert("Balance reminder copied.");
   }
 
   function renderLeads(){

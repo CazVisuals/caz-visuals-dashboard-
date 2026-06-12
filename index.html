@@ -219,7 +219,6 @@
   <button onclick="createBalanceReminderTasks()">Create Balance Reminder Tasks</button>
   <button onclick="createShootPrepTasks()">Create Shoot Prep Tasks</button>
   <button onclick="createAllAITasks()">Create All Suggested Tasks</button>
-  <button onclick="debugTaskScan()">Debug Task Scan</button>
 
   <div id="taskCenterOutput" class="reply-box"></div>
 </div>
@@ -573,20 +572,6 @@ Caz Visuals`;
   }
 
 
-
-  function todayString(){
-    return new Date().toISOString().split("T")[0];
-  }
-
-  function cleanStatus(status){
-    return String(status || "").trim().toLowerCase();
-  }
-
-  function isClosedStatus(status){
-    const s = cleanStatus(status);
-    return s === "booked" || s === "delivered" || s === "closed" || s === "paid in full";
-  }
-
   function activityAlreadyExists(activityType, activityNote){
     return activities.some(a =>
       a.activity_type === activityType &&
@@ -615,16 +600,17 @@ Caz Visuals`;
   }
 
   async function createFollowUpTasks(){
-    await loadLeads();
-    await loadActivities();
-
-    const today = todayString();
+    const today = new Date();
 
     const followUps = leads.filter(l => {
-      const followDate = String(l.next_followup || "").trim();
-      if(!followDate) return false;
+      if(!l.next_followup) return false;
 
-      return followDate <= today && !isClosedStatus(l.status);
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
     });
 
     let created = 0;
@@ -647,22 +633,11 @@ Caz Visuals`;
     await loadActivities();
 
     document.getElementById("taskCenterOutput").innerText =
-      "Follow-up task scan complete.
-
-" +
-      "Leads scanned: " + leads.length + "
-" +
-      "Matched follow-ups: " + followUps.length + "
-" +
-      "Created: " + created + "
-" +
-      "Already existing or skipped: " + (followUps.length - created);
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
   }
 
   async function createDepositReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
 
     let created = 0;
@@ -690,9 +665,6 @@ Caz Visuals`;
   }
 
   async function createBalanceReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const openBalances = contracts.filter(c => !c.balance_paid);
 
     let created = 0;
@@ -720,9 +692,6 @@ Caz Visuals`;
   }
 
   async function createShootPrepTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -770,49 +739,6 @@ Caz Visuals`;
 
     document.getElementById("taskCenterOutput").innerText =
       "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
-  }
-
-
-  async function debugTaskScan(){
-    await loadLeads();
-    await loadContracts();
-    await loadActivities();
-
-    let output = "DEBUG TASK SCAN\n\n";
-    output += "Leads loaded: " + leads.length + "\n";
-    output += "Contracts loaded: " + contracts.length + "\n";
-    output += "Activities loaded: " + activities.length + "\n";
-    output += "Today: " + todayString() + "\n\n";
-
-    output += "Lead Check:\n";
-
-    if(leads.length === 0){
-      output += "- No leads loaded.\n";
-    } else {
-      leads.slice(0, 10).forEach(l => {
-        output += "- " + (l.name || "No name") +
-          " | status: " + (l.status || "blank") +
-          " | next_followup: " + (l.next_followup || "blank") +
-          " | eligible: " + ((String(l.next_followup || "").trim() <= todayString()) && !isClosedStatus(l.status)) +
-          "\n";
-      });
-    }
-
-    output += "\nContract Check:\n";
-
-    if(contracts.length === 0){
-      output += "- No contracts loaded.\n";
-    } else {
-      contracts.slice(0, 10).forEach(c => {
-        output += "- " + (c.client_name || "No name") +
-          " | deposit_paid: " + c.deposit_paid +
-          " | balance_paid: " + c.balance_paid +
-          " | session_date: " + (c.session_date || "blank") +
-          "\n";
-      });
-    }
-
-    document.getElementById("taskCenterOutput").innerText = output;
   }
 
   loadLeads();
@@ -1210,20 +1136,6 @@ Caz Visuals`;
   }
 
 
-
-  function todayString(){
-    return new Date().toISOString().split("T")[0];
-  }
-
-  function cleanStatus(status){
-    return String(status || "").trim().toLowerCase();
-  }
-
-  function isClosedStatus(status){
-    const s = cleanStatus(status);
-    return s === "booked" || s === "delivered" || s === "closed" || s === "paid in full";
-  }
-
   function activityAlreadyExists(activityType, activityNote){
     return activities.some(a =>
       a.activity_type === activityType &&
@@ -1252,16 +1164,17 @@ Caz Visuals`;
   }
 
   async function createFollowUpTasks(){
-    await loadLeads();
-    await loadActivities();
-
-    const today = todayString();
+    const today = new Date();
 
     const followUps = leads.filter(l => {
-      const followDate = String(l.next_followup || "").trim();
-      if(!followDate) return false;
+      if(!l.next_followup) return false;
 
-      return followDate <= today && !isClosedStatus(l.status);
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
     });
 
     let created = 0;
@@ -1284,22 +1197,11 @@ Caz Visuals`;
     await loadActivities();
 
     document.getElementById("taskCenterOutput").innerText =
-      "Follow-up task scan complete.
-
-" +
-      "Leads scanned: " + leads.length + "
-" +
-      "Matched follow-ups: " + followUps.length + "
-" +
-      "Created: " + created + "
-" +
-      "Already existing or skipped: " + (followUps.length - created);
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
   }
 
   async function createDepositReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
 
     let created = 0;
@@ -1327,9 +1229,6 @@ Caz Visuals`;
   }
 
   async function createBalanceReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const openBalances = contracts.filter(c => !c.balance_paid);
 
     let created = 0;
@@ -1357,9 +1256,6 @@ Caz Visuals`;
   }
 
   async function createShootPrepTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -1407,49 +1303,6 @@ Caz Visuals`;
 
     document.getElementById("taskCenterOutput").innerText =
       "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
-  }
-
-
-  async function debugTaskScan(){
-    await loadLeads();
-    await loadContracts();
-    await loadActivities();
-
-    let output = "DEBUG TASK SCAN\n\n";
-    output += "Leads loaded: " + leads.length + "\n";
-    output += "Contracts loaded: " + contracts.length + "\n";
-    output += "Activities loaded: " + activities.length + "\n";
-    output += "Today: " + todayString() + "\n\n";
-
-    output += "Lead Check:\n";
-
-    if(leads.length === 0){
-      output += "- No leads loaded.\n";
-    } else {
-      leads.slice(0, 10).forEach(l => {
-        output += "- " + (l.name || "No name") +
-          " | status: " + (l.status || "blank") +
-          " | next_followup: " + (l.next_followup || "blank") +
-          " | eligible: " + ((String(l.next_followup || "").trim() <= todayString()) && !isClosedStatus(l.status)) +
-          "\n";
-      });
-    }
-
-    output += "\nContract Check:\n";
-
-    if(contracts.length === 0){
-      output += "- No contracts loaded.\n";
-    } else {
-      contracts.slice(0, 10).forEach(c => {
-        output += "- " + (c.client_name || "No name") +
-          " | deposit_paid: " + c.deposit_paid +
-          " | balance_paid: " + c.balance_paid +
-          " | session_date: " + (c.session_date || "blank") +
-          "\n";
-      });
-    }
-
-    document.getElementById("taskCenterOutput").innerText = output;
   }
 
   loadLeads();
@@ -1773,20 +1626,6 @@ Caz Visuals`;
   }
 
 
-
-  function todayString(){
-    return new Date().toISOString().split("T")[0];
-  }
-
-  function cleanStatus(status){
-    return String(status || "").trim().toLowerCase();
-  }
-
-  function isClosedStatus(status){
-    const s = cleanStatus(status);
-    return s === "booked" || s === "delivered" || s === "closed" || s === "paid in full";
-  }
-
   function activityAlreadyExists(activityType, activityNote){
     return activities.some(a =>
       a.activity_type === activityType &&
@@ -1815,16 +1654,17 @@ Caz Visuals`;
   }
 
   async function createFollowUpTasks(){
-    await loadLeads();
-    await loadActivities();
-
-    const today = todayString();
+    const today = new Date();
 
     const followUps = leads.filter(l => {
-      const followDate = String(l.next_followup || "").trim();
-      if(!followDate) return false;
+      if(!l.next_followup) return false;
 
-      return followDate <= today && !isClosedStatus(l.status);
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
     });
 
     let created = 0;
@@ -1847,22 +1687,11 @@ Caz Visuals`;
     await loadActivities();
 
     document.getElementById("taskCenterOutput").innerText =
-      "Follow-up task scan complete.
-
-" +
-      "Leads scanned: " + leads.length + "
-" +
-      "Matched follow-ups: " + followUps.length + "
-" +
-      "Created: " + created + "
-" +
-      "Already existing or skipped: " + (followUps.length - created);
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
   }
 
   async function createDepositReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
 
     let created = 0;
@@ -1890,9 +1719,6 @@ Caz Visuals`;
   }
 
   async function createBalanceReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const openBalances = contracts.filter(c => !c.balance_paid);
 
     let created = 0;
@@ -1920,9 +1746,6 @@ Caz Visuals`;
   }
 
   async function createShootPrepTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -1970,49 +1793,6 @@ Caz Visuals`;
 
     document.getElementById("taskCenterOutput").innerText =
       "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
-  }
-
-
-  async function debugTaskScan(){
-    await loadLeads();
-    await loadContracts();
-    await loadActivities();
-
-    let output = "DEBUG TASK SCAN\n\n";
-    output += "Leads loaded: " + leads.length + "\n";
-    output += "Contracts loaded: " + contracts.length + "\n";
-    output += "Activities loaded: " + activities.length + "\n";
-    output += "Today: " + todayString() + "\n\n";
-
-    output += "Lead Check:\n";
-
-    if(leads.length === 0){
-      output += "- No leads loaded.\n";
-    } else {
-      leads.slice(0, 10).forEach(l => {
-        output += "- " + (l.name || "No name") +
-          " | status: " + (l.status || "blank") +
-          " | next_followup: " + (l.next_followup || "blank") +
-          " | eligible: " + ((String(l.next_followup || "").trim() <= todayString()) && !isClosedStatus(l.status)) +
-          "\n";
-      });
-    }
-
-    output += "\nContract Check:\n";
-
-    if(contracts.length === 0){
-      output += "- No contracts loaded.\n";
-    } else {
-      contracts.slice(0, 10).forEach(c => {
-        output += "- " + (c.client_name || "No name") +
-          " | deposit_paid: " + c.deposit_paid +
-          " | balance_paid: " + c.balance_paid +
-          " | session_date: " + (c.session_date || "blank") +
-          "\n";
-      });
-    }
-
-    document.getElementById("taskCenterOutput").innerText = output;
   }
 
   loadLeads();
@@ -2303,20 +2083,6 @@ Caz Visuals`;
   }
 
 
-
-  function todayString(){
-    return new Date().toISOString().split("T")[0];
-  }
-
-  function cleanStatus(status){
-    return String(status || "").trim().toLowerCase();
-  }
-
-  function isClosedStatus(status){
-    const s = cleanStatus(status);
-    return s === "booked" || s === "delivered" || s === "closed" || s === "paid in full";
-  }
-
   function activityAlreadyExists(activityType, activityNote){
     return activities.some(a =>
       a.activity_type === activityType &&
@@ -2345,16 +2111,17 @@ Caz Visuals`;
   }
 
   async function createFollowUpTasks(){
-    await loadLeads();
-    await loadActivities();
-
-    const today = todayString();
+    const today = new Date();
 
     const followUps = leads.filter(l => {
-      const followDate = String(l.next_followup || "").trim();
-      if(!followDate) return false;
+      if(!l.next_followup) return false;
 
-      return followDate <= today && !isClosedStatus(l.status);
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
     });
 
     let created = 0;
@@ -2377,22 +2144,11 @@ Caz Visuals`;
     await loadActivities();
 
     document.getElementById("taskCenterOutput").innerText =
-      "Follow-up task scan complete.
-
-" +
-      "Leads scanned: " + leads.length + "
-" +
-      "Matched follow-ups: " + followUps.length + "
-" +
-      "Created: " + created + "
-" +
-      "Already existing or skipped: " + (followUps.length - created);
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
   }
 
   async function createDepositReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
 
     let created = 0;
@@ -2420,9 +2176,6 @@ Caz Visuals`;
   }
 
   async function createBalanceReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const openBalances = contracts.filter(c => !c.balance_paid);
 
     let created = 0;
@@ -2450,9 +2203,6 @@ Caz Visuals`;
   }
 
   async function createShootPrepTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -2500,49 +2250,6 @@ Caz Visuals`;
 
     document.getElementById("taskCenterOutput").innerText =
       "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
-  }
-
-
-  async function debugTaskScan(){
-    await loadLeads();
-    await loadContracts();
-    await loadActivities();
-
-    let output = "DEBUG TASK SCAN\n\n";
-    output += "Leads loaded: " + leads.length + "\n";
-    output += "Contracts loaded: " + contracts.length + "\n";
-    output += "Activities loaded: " + activities.length + "\n";
-    output += "Today: " + todayString() + "\n\n";
-
-    output += "Lead Check:\n";
-
-    if(leads.length === 0){
-      output += "- No leads loaded.\n";
-    } else {
-      leads.slice(0, 10).forEach(l => {
-        output += "- " + (l.name || "No name") +
-          " | status: " + (l.status || "blank") +
-          " | next_followup: " + (l.next_followup || "blank") +
-          " | eligible: " + ((String(l.next_followup || "").trim() <= todayString()) && !isClosedStatus(l.status)) +
-          "\n";
-      });
-    }
-
-    output += "\nContract Check:\n";
-
-    if(contracts.length === 0){
-      output += "- No contracts loaded.\n";
-    } else {
-      contracts.slice(0, 10).forEach(c => {
-        output += "- " + (c.client_name || "No name") +
-          " | deposit_paid: " + c.deposit_paid +
-          " | balance_paid: " + c.balance_paid +
-          " | session_date: " + (c.session_date || "blank") +
-          "\n";
-      });
-    }
-
-    document.getElementById("taskCenterOutput").innerText = output;
   }
 
   loadLeads();
@@ -2819,20 +2526,6 @@ Caz Visuals`;
   }
 
 
-
-  function todayString(){
-    return new Date().toISOString().split("T")[0];
-  }
-
-  function cleanStatus(status){
-    return String(status || "").trim().toLowerCase();
-  }
-
-  function isClosedStatus(status){
-    const s = cleanStatus(status);
-    return s === "booked" || s === "delivered" || s === "closed" || s === "paid in full";
-  }
-
   function activityAlreadyExists(activityType, activityNote){
     return activities.some(a =>
       a.activity_type === activityType &&
@@ -2861,16 +2554,17 @@ Caz Visuals`;
   }
 
   async function createFollowUpTasks(){
-    await loadLeads();
-    await loadActivities();
-
-    const today = todayString();
+    const today = new Date();
 
     const followUps = leads.filter(l => {
-      const followDate = String(l.next_followup || "").trim();
-      if(!followDate) return false;
+      if(!l.next_followup) return false;
 
-      return followDate <= today && !isClosedStatus(l.status);
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
     });
 
     let created = 0;
@@ -2893,22 +2587,11 @@ Caz Visuals`;
     await loadActivities();
 
     document.getElementById("taskCenterOutput").innerText =
-      "Follow-up task scan complete.
-
-" +
-      "Leads scanned: " + leads.length + "
-" +
-      "Matched follow-ups: " + followUps.length + "
-" +
-      "Created: " + created + "
-" +
-      "Already existing or skipped: " + (followUps.length - created);
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
   }
 
   async function createDepositReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
 
     let created = 0;
@@ -2936,9 +2619,6 @@ Caz Visuals`;
   }
 
   async function createBalanceReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const openBalances = contracts.filter(c => !c.balance_paid);
 
     let created = 0;
@@ -2966,9 +2646,6 @@ Caz Visuals`;
   }
 
   async function createShootPrepTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -3016,49 +2693,6 @@ Caz Visuals`;
 
     document.getElementById("taskCenterOutput").innerText =
       "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
-  }
-
-
-  async function debugTaskScan(){
-    await loadLeads();
-    await loadContracts();
-    await loadActivities();
-
-    let output = "DEBUG TASK SCAN\n\n";
-    output += "Leads loaded: " + leads.length + "\n";
-    output += "Contracts loaded: " + contracts.length + "\n";
-    output += "Activities loaded: " + activities.length + "\n";
-    output += "Today: " + todayString() + "\n\n";
-
-    output += "Lead Check:\n";
-
-    if(leads.length === 0){
-      output += "- No leads loaded.\n";
-    } else {
-      leads.slice(0, 10).forEach(l => {
-        output += "- " + (l.name || "No name") +
-          " | status: " + (l.status || "blank") +
-          " | next_followup: " + (l.next_followup || "blank") +
-          " | eligible: " + ((String(l.next_followup || "").trim() <= todayString()) && !isClosedStatus(l.status)) +
-          "\n";
-      });
-    }
-
-    output += "\nContract Check:\n";
-
-    if(contracts.length === 0){
-      output += "- No contracts loaded.\n";
-    } else {
-      contracts.slice(0, 10).forEach(c => {
-        output += "- " + (c.client_name || "No name") +
-          " | deposit_paid: " + c.deposit_paid +
-          " | balance_paid: " + c.balance_paid +
-          " | session_date: " + (c.session_date || "blank") +
-          "\n";
-      });
-    }
-
-    document.getElementById("taskCenterOutput").innerText = output;
   }
 
   loadLeads();
@@ -4231,20 +3865,6 @@ Caz Visuals`;
   }
 
 
-
-  function todayString(){
-    return new Date().toISOString().split("T")[0];
-  }
-
-  function cleanStatus(status){
-    return String(status || "").trim().toLowerCase();
-  }
-
-  function isClosedStatus(status){
-    const s = cleanStatus(status);
-    return s === "booked" || s === "delivered" || s === "closed" || s === "paid in full";
-  }
-
   function activityAlreadyExists(activityType, activityNote){
     return activities.some(a =>
       a.activity_type === activityType &&
@@ -4273,16 +3893,17 @@ Caz Visuals`;
   }
 
   async function createFollowUpTasks(){
-    await loadLeads();
-    await loadActivities();
-
-    const today = todayString();
+    const today = new Date();
 
     const followUps = leads.filter(l => {
-      const followDate = String(l.next_followup || "").trim();
-      if(!followDate) return false;
+      if(!l.next_followup) return false;
 
-      return followDate <= today && !isClosedStatus(l.status);
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
     });
 
     let created = 0;
@@ -4305,22 +3926,11 @@ Caz Visuals`;
     await loadActivities();
 
     document.getElementById("taskCenterOutput").innerText =
-      "Follow-up task scan complete.
-
-" +
-      "Leads scanned: " + leads.length + "
-" +
-      "Matched follow-ups: " + followUps.length + "
-" +
-      "Created: " + created + "
-" +
-      "Already existing or skipped: " + (followUps.length - created);
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
   }
 
   async function createDepositReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
 
     let created = 0;
@@ -4348,9 +3958,6 @@ Caz Visuals`;
   }
 
   async function createBalanceReminderTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const openBalances = contracts.filter(c => !c.balance_paid);
 
     let created = 0;
@@ -4378,9 +3985,6 @@ Caz Visuals`;
   }
 
   async function createShootPrepTasks(){
-    await loadContracts();
-    await loadActivities();
-
     const today = new Date();
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(today.getDate() + 7);
@@ -4428,49 +4032,6 @@ Caz Visuals`;
 
     document.getElementById("taskCenterOutput").innerText =
       "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
-  }
-
-
-  async function debugTaskScan(){
-    await loadLeads();
-    await loadContracts();
-    await loadActivities();
-
-    let output = "DEBUG TASK SCAN\n\n";
-    output += "Leads loaded: " + leads.length + "\n";
-    output += "Contracts loaded: " + contracts.length + "\n";
-    output += "Activities loaded: " + activities.length + "\n";
-    output += "Today: " + todayString() + "\n\n";
-
-    output += "Lead Check:\n";
-
-    if(leads.length === 0){
-      output += "- No leads loaded.\n";
-    } else {
-      leads.slice(0, 10).forEach(l => {
-        output += "- " + (l.name || "No name") +
-          " | status: " + (l.status || "blank") +
-          " | next_followup: " + (l.next_followup || "blank") +
-          " | eligible: " + ((String(l.next_followup || "").trim() <= todayString()) && !isClosedStatus(l.status)) +
-          "\n";
-      });
-    }
-
-    output += "\nContract Check:\n";
-
-    if(contracts.length === 0){
-      output += "- No contracts loaded.\n";
-    } else {
-      contracts.slice(0, 10).forEach(c => {
-        output += "- " + (c.client_name || "No name") +
-          " | deposit_paid: " + c.deposit_paid +
-          " | balance_paid: " + c.balance_paid +
-          " | session_date: " + (c.session_date || "blank") +
-          "\n";
-      });
-    }
-
-    document.getElementById("taskCenterOutput").innerText = output;
   }
 
   loadLeads();

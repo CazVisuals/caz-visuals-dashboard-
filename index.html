@@ -5820,6 +5820,14 @@ function copyOpenAIOutput(){
   );
 }
 
+function getLeadForContract(contract){
+  return leads.find(l =>
+    String(l.id) === String(contract.lead_id) ||
+    String(l.name || "").toLowerCase() ===
+    String(contract.client_name || "").toLowerCase()
+  );
+}
+  
 async function sendAIEmailToClient(contractId){
   const contract = contracts.find(c => Number(c.id) === Number(contractId));
 

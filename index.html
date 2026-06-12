@@ -4890,7 +4890,32 @@ Caz Visuals`;
 
     alert("Task deleted.");
   }
+async function sendTestEmail(){
+  const response = await fetch("/.netlify/functions/send-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      to: "cazimirconstant@gmail.com",
+      subject: "Caz Visuals CRM Test Email",
+      message: "This is a test email from your Caz Visuals CRM. If you received this, email automation is working."
+    })
+  });
 
+  const result = await response.json();
+
+  if(!response.ok){
+    alert("Email failed: " + JSON.stringify(result));
+    return;
+  }
+
+  alert("Test email sent.");
+}
+<button onclick="sendTestEmail()">
+  Send Test Email
+</button>
+  
   loadLeads();
   loadContracts();
   loadActivities();

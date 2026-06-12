@@ -45,6 +45,7 @@
     <a href="#shoots">Shoots</a>
     <a href="#aiAssistant">AI</a>
     <a href="#dailyBrief">Daily Brief</a>
+    <a href="#officeManager">Office Manager</a>
     <a href="#activities">Activities</a>
   </div>
 </div>
@@ -193,6 +194,18 @@
   <div id="dailyBriefOutput" class="reply-box"></div>
 </div>
 
+
+<div class="card" id="officeManager">
+  <h2>AI Office Manager</h2>
+  <button onclick="officeMorningBrief()">Morning Brief</button>
+  <button onclick="officeTodayTasks()">Today&apos;s Tasks</button>
+  <button onclick="officeClientRisks()">Client Risk Check</button>
+  <button onclick="officeRevenueReport()">Revenue Report</button>
+  <button onclick="officeFollowUpMessage()">Write Follow-Up Message</button>
+  <div id="officeOutput" class="reply-box"></div>
+  <button onclick="copyOfficeOutput()">Copy Office Manager Output</button>
+</div>
+
 <div class="card" id="activities">
   <h2>Activity Timeline</h2>
 
@@ -275,7 +288,273 @@
       return;
     }
 
-    loadLeads();
+  
+  function formatMoney(value){
+    return "$" + Number(value || 0);
+  }
+
+  function getFollowUpsDue(){
+    const today = new Date();
+
+    return leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+  }
+
+  function getUpcomingShoots(limit){
+    return contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, limit || 5);
+  }
+
+  function getUnpaidDeposits(){
+    return contracts.filter(c => !c.deposit_paid);
+  }
+
+  function getOpenBalances(){
+    return contracts.filter(c => !c.balance_paid);
+  }
+
+  function officeMorningBrief(){
+    const followUps = getFollowUpsDue();
+    const upcoming = getUpcomingShoots(5);
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "AI OFFICE MANAGER - MORNING BRIEF\n\n";
+
+    output += "Good morning Caz.\n\n";
+
+    output += "Snapshot:\n";
+    output += "- Total leads: " + leads.length + "\n";
+    output += "- Active contracts: " + contracts.length + "\n";
+    output += "- Follow-ups due: " + followUps.length + "\n";
+    output += "- Upcoming shoots: " + upcoming.length + "\n";
+    output += "- Contracts without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Open balances: " + openBalances.length + "\n\n";
+
+    output += "Money:\n";
+    output += "- Booked revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "- Deposits received: " + formatMoney(depositsReceived) + "\n";
+    output += "- Outstanding balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Upcoming Shoots:\n";
+
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nRecommended Next Move:\n";
+
+    if(followUps.length > 0){
+      output += "Follow up with " + followUps[0].name + " first.";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(openBalances.length > 0){
+      output += "Send a balance reminder to " + openBalances[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeTodayTasks(){
+    const followUps = getFollowUpsDue();
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+    const upcoming = getUpcomingShoots(3);
+
+    let output = "TODAY'S TASKS\n\n";
+    let taskNumber = 1;
+
+    followUps.slice(0, 5).forEach(l => {
+      output += taskNumber + ". Follow up with " + l.name + " about " + l.service + ".\n";
+      taskNumber++;
+    });
+
+    unpaidDeposits.slice(0, 5).forEach(c => {
+      output += taskNumber + ". Send deposit reminder to " + c.client_name + " for " + formatMoney(c.deposit) + ".\n";
+      taskNumber++;
+    });
+
+    openBalances.slice(0, 5).forEach(c => {
+      if(c.balance_paid) return;
+      output += taskNumber + ". Check balance status for " + c.client_name + " - " + formatMoney(c.balance) + ".\n";
+      taskNumber++;
+    });
+
+    upcoming.slice(0, 3).forEach(c => {
+      output += taskNumber + ". Confirm shoot details for " + c.client_name + " on " + c.session_date + ".\n";
+      taskNumber++;
+    });
+
+    if(taskNumber === 1){
+      output += "No major tasks right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeClientRisks(){
+    const noFollowUp = leads.filter(l =>
+      !l.next_followup &&
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed"
+    );
+
+    const quoteSent = leads.filter(l => l.status === "Quote Sent");
+    const unpaidDeposits = getUnpaidDeposits();
+
+    let output = "CLIENT RISK CHECK\n\n";
+
+    output += "Leads With No Follow-Up Date:\n";
+    if(noFollowUp.length === 0){
+      output += "- None\n";
+    } else {
+      noFollowUp.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nQuote Sent But Not Booked:\n";
+    if(quoteSent.length === 0){
+      output += "- None\n";
+    } else {
+      quoteSent.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nContracts Without Deposit Paid:\n";
+    if(unpaidDeposits.length === 0){
+      output += "- None\n";
+    } else {
+      unpaidDeposits.forEach(c => {
+        output += "- " + c.client_name + " | Deposit: " + formatMoney(c.deposit) + "\n";
+      });
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeRevenueReport(){
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+    let paidInFullCount = 0;
+    let signedCount = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+
+      if(c.balance_paid){
+        paidInFullCount++;
+      }
+
+      if(c.signed){
+        signedCount++;
+      }
+    });
+
+    let output = "REVENUE REPORT\n\n";
+
+    output += "Booked Revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "Deposits Received: " + formatMoney(depositsReceived) + "\n";
+    output += "Outstanding Balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Contracts:\n";
+    output += "- Total contracts: " + contracts.length + "\n";
+    output += "- Signed contracts: " + signedCount + "\n";
+    output += "- Paid in full: " + paidInFullCount + "\n\n";
+
+    output += "Revenue Breakdown:\n";
+
+    contracts.forEach(c => {
+      output += "- " + c.client_name + " | " + c.service + " | Total: " + formatMoney(c.total) + " | Balance: " + formatMoney(c.balance) + "\n";
+    });
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeFollowUpMessage(){
+    const followUps = getFollowUpsDue();
+
+    if(followUps.length === 0){
+      document.getElementById("officeOutput").innerText =
+        "No follow-up clients found. Add a next follow-up date to a lead first.";
+      return;
+    }
+
+    const lead = followUps[0];
+
+    const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I'm happy to help with the next steps whenever you're ready.
+
+Thank you,
+Caz Visuals`;
+
+    document.getElementById("officeOutput").innerText = message;
+  }
+
+  function copyOfficeOutput(){
+    const text = document.getElementById("officeOutput").innerText;
+
+    if(!text){
+      alert("Generate an Office Manager response first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Office Manager output copied.");
+  }
+
+  loadLeads();
   }
 
 
@@ -403,7 +682,273 @@
     }
 
     resetForm();
-    loadLeads();
+  
+  function formatMoney(value){
+    return "$" + Number(value || 0);
+  }
+
+  function getFollowUpsDue(){
+    const today = new Date();
+
+    return leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+  }
+
+  function getUpcomingShoots(limit){
+    return contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, limit || 5);
+  }
+
+  function getUnpaidDeposits(){
+    return contracts.filter(c => !c.deposit_paid);
+  }
+
+  function getOpenBalances(){
+    return contracts.filter(c => !c.balance_paid);
+  }
+
+  function officeMorningBrief(){
+    const followUps = getFollowUpsDue();
+    const upcoming = getUpcomingShoots(5);
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "AI OFFICE MANAGER - MORNING BRIEF\n\n";
+
+    output += "Good morning Caz.\n\n";
+
+    output += "Snapshot:\n";
+    output += "- Total leads: " + leads.length + "\n";
+    output += "- Active contracts: " + contracts.length + "\n";
+    output += "- Follow-ups due: " + followUps.length + "\n";
+    output += "- Upcoming shoots: " + upcoming.length + "\n";
+    output += "- Contracts without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Open balances: " + openBalances.length + "\n\n";
+
+    output += "Money:\n";
+    output += "- Booked revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "- Deposits received: " + formatMoney(depositsReceived) + "\n";
+    output += "- Outstanding balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Upcoming Shoots:\n";
+
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nRecommended Next Move:\n";
+
+    if(followUps.length > 0){
+      output += "Follow up with " + followUps[0].name + " first.";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(openBalances.length > 0){
+      output += "Send a balance reminder to " + openBalances[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeTodayTasks(){
+    const followUps = getFollowUpsDue();
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+    const upcoming = getUpcomingShoots(3);
+
+    let output = "TODAY'S TASKS\n\n";
+    let taskNumber = 1;
+
+    followUps.slice(0, 5).forEach(l => {
+      output += taskNumber + ". Follow up with " + l.name + " about " + l.service + ".\n";
+      taskNumber++;
+    });
+
+    unpaidDeposits.slice(0, 5).forEach(c => {
+      output += taskNumber + ". Send deposit reminder to " + c.client_name + " for " + formatMoney(c.deposit) + ".\n";
+      taskNumber++;
+    });
+
+    openBalances.slice(0, 5).forEach(c => {
+      if(c.balance_paid) return;
+      output += taskNumber + ". Check balance status for " + c.client_name + " - " + formatMoney(c.balance) + ".\n";
+      taskNumber++;
+    });
+
+    upcoming.slice(0, 3).forEach(c => {
+      output += taskNumber + ". Confirm shoot details for " + c.client_name + " on " + c.session_date + ".\n";
+      taskNumber++;
+    });
+
+    if(taskNumber === 1){
+      output += "No major tasks right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeClientRisks(){
+    const noFollowUp = leads.filter(l =>
+      !l.next_followup &&
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed"
+    );
+
+    const quoteSent = leads.filter(l => l.status === "Quote Sent");
+    const unpaidDeposits = getUnpaidDeposits();
+
+    let output = "CLIENT RISK CHECK\n\n";
+
+    output += "Leads With No Follow-Up Date:\n";
+    if(noFollowUp.length === 0){
+      output += "- None\n";
+    } else {
+      noFollowUp.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nQuote Sent But Not Booked:\n";
+    if(quoteSent.length === 0){
+      output += "- None\n";
+    } else {
+      quoteSent.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nContracts Without Deposit Paid:\n";
+    if(unpaidDeposits.length === 0){
+      output += "- None\n";
+    } else {
+      unpaidDeposits.forEach(c => {
+        output += "- " + c.client_name + " | Deposit: " + formatMoney(c.deposit) + "\n";
+      });
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeRevenueReport(){
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+    let paidInFullCount = 0;
+    let signedCount = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+
+      if(c.balance_paid){
+        paidInFullCount++;
+      }
+
+      if(c.signed){
+        signedCount++;
+      }
+    });
+
+    let output = "REVENUE REPORT\n\n";
+
+    output += "Booked Revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "Deposits Received: " + formatMoney(depositsReceived) + "\n";
+    output += "Outstanding Balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Contracts:\n";
+    output += "- Total contracts: " + contracts.length + "\n";
+    output += "- Signed contracts: " + signedCount + "\n";
+    output += "- Paid in full: " + paidInFullCount + "\n\n";
+
+    output += "Revenue Breakdown:\n";
+
+    contracts.forEach(c => {
+      output += "- " + c.client_name + " | " + c.service + " | Total: " + formatMoney(c.total) + " | Balance: " + formatMoney(c.balance) + "\n";
+    });
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeFollowUpMessage(){
+    const followUps = getFollowUpsDue();
+
+    if(followUps.length === 0){
+      document.getElementById("officeOutput").innerText =
+        "No follow-up clients found. Add a next follow-up date to a lead first.";
+      return;
+    }
+
+    const lead = followUps[0];
+
+    const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I'm happy to help with the next steps whenever you're ready.
+
+Thank you,
+Caz Visuals`;
+
+    document.getElementById("officeOutput").innerText = message;
+  }
+
+  function copyOfficeOutput(){
+    const text = document.getElementById("officeOutput").innerText;
+
+    if(!text){
+      alert("Generate an Office Manager response first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Office Manager output copied.");
+  }
+
+  loadLeads();
   }
 
   function editLead(id){
@@ -457,7 +1002,273 @@
     if(confirm("Delete this lead?")){
       const { error } = await db.from("leads").delete().eq("id", id);
       if(error) alert("Error deleting lead: " + error.message);
-      loadLeads();
+    
+  function formatMoney(value){
+    return "$" + Number(value || 0);
+  }
+
+  function getFollowUpsDue(){
+    const today = new Date();
+
+    return leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+  }
+
+  function getUpcomingShoots(limit){
+    return contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, limit || 5);
+  }
+
+  function getUnpaidDeposits(){
+    return contracts.filter(c => !c.deposit_paid);
+  }
+
+  function getOpenBalances(){
+    return contracts.filter(c => !c.balance_paid);
+  }
+
+  function officeMorningBrief(){
+    const followUps = getFollowUpsDue();
+    const upcoming = getUpcomingShoots(5);
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "AI OFFICE MANAGER - MORNING BRIEF\n\n";
+
+    output += "Good morning Caz.\n\n";
+
+    output += "Snapshot:\n";
+    output += "- Total leads: " + leads.length + "\n";
+    output += "- Active contracts: " + contracts.length + "\n";
+    output += "- Follow-ups due: " + followUps.length + "\n";
+    output += "- Upcoming shoots: " + upcoming.length + "\n";
+    output += "- Contracts without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Open balances: " + openBalances.length + "\n\n";
+
+    output += "Money:\n";
+    output += "- Booked revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "- Deposits received: " + formatMoney(depositsReceived) + "\n";
+    output += "- Outstanding balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Upcoming Shoots:\n";
+
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nRecommended Next Move:\n";
+
+    if(followUps.length > 0){
+      output += "Follow up with " + followUps[0].name + " first.";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(openBalances.length > 0){
+      output += "Send a balance reminder to " + openBalances[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeTodayTasks(){
+    const followUps = getFollowUpsDue();
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+    const upcoming = getUpcomingShoots(3);
+
+    let output = "TODAY'S TASKS\n\n";
+    let taskNumber = 1;
+
+    followUps.slice(0, 5).forEach(l => {
+      output += taskNumber + ". Follow up with " + l.name + " about " + l.service + ".\n";
+      taskNumber++;
+    });
+
+    unpaidDeposits.slice(0, 5).forEach(c => {
+      output += taskNumber + ". Send deposit reminder to " + c.client_name + " for " + formatMoney(c.deposit) + ".\n";
+      taskNumber++;
+    });
+
+    openBalances.slice(0, 5).forEach(c => {
+      if(c.balance_paid) return;
+      output += taskNumber + ". Check balance status for " + c.client_name + " - " + formatMoney(c.balance) + ".\n";
+      taskNumber++;
+    });
+
+    upcoming.slice(0, 3).forEach(c => {
+      output += taskNumber + ". Confirm shoot details for " + c.client_name + " on " + c.session_date + ".\n";
+      taskNumber++;
+    });
+
+    if(taskNumber === 1){
+      output += "No major tasks right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeClientRisks(){
+    const noFollowUp = leads.filter(l =>
+      !l.next_followup &&
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed"
+    );
+
+    const quoteSent = leads.filter(l => l.status === "Quote Sent");
+    const unpaidDeposits = getUnpaidDeposits();
+
+    let output = "CLIENT RISK CHECK\n\n";
+
+    output += "Leads With No Follow-Up Date:\n";
+    if(noFollowUp.length === 0){
+      output += "- None\n";
+    } else {
+      noFollowUp.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nQuote Sent But Not Booked:\n";
+    if(quoteSent.length === 0){
+      output += "- None\n";
+    } else {
+      quoteSent.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nContracts Without Deposit Paid:\n";
+    if(unpaidDeposits.length === 0){
+      output += "- None\n";
+    } else {
+      unpaidDeposits.forEach(c => {
+        output += "- " + c.client_name + " | Deposit: " + formatMoney(c.deposit) + "\n";
+      });
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeRevenueReport(){
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+    let paidInFullCount = 0;
+    let signedCount = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+
+      if(c.balance_paid){
+        paidInFullCount++;
+      }
+
+      if(c.signed){
+        signedCount++;
+      }
+    });
+
+    let output = "REVENUE REPORT\n\n";
+
+    output += "Booked Revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "Deposits Received: " + formatMoney(depositsReceived) + "\n";
+    output += "Outstanding Balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Contracts:\n";
+    output += "- Total contracts: " + contracts.length + "\n";
+    output += "- Signed contracts: " + signedCount + "\n";
+    output += "- Paid in full: " + paidInFullCount + "\n\n";
+
+    output += "Revenue Breakdown:\n";
+
+    contracts.forEach(c => {
+      output += "- " + c.client_name + " | " + c.service + " | Total: " + formatMoney(c.total) + " | Balance: " + formatMoney(c.balance) + "\n";
+    });
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeFollowUpMessage(){
+    const followUps = getFollowUpsDue();
+
+    if(followUps.length === 0){
+      document.getElementById("officeOutput").innerText =
+        "No follow-up clients found. Add a next follow-up date to a lead first.";
+      return;
+    }
+
+    const lead = followUps[0];
+
+    const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I'm happy to help with the next steps whenever you're ready.
+
+Thank you,
+Caz Visuals`;
+
+    document.getElementById("officeOutput").innerText = message;
+  }
+
+  function copyOfficeOutput(){
+    const text = document.getElementById("officeOutput").innerText;
+
+    if(!text){
+      alert("Generate an Office Manager response first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Office Manager output copied.");
+  }
+
+  loadLeads();
     }
   }
 
@@ -478,14 +1289,546 @@
   async function markBooked(id){
     const { error } = await db.from("leads").update({ status:"Booked" }).eq("id", id);
     if(error) alert("Error: " + error.message);
-    loadLeads();
+  
+  function formatMoney(value){
+    return "$" + Number(value || 0);
+  }
+
+  function getFollowUpsDue(){
+    const today = new Date();
+
+    return leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+  }
+
+  function getUpcomingShoots(limit){
+    return contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, limit || 5);
+  }
+
+  function getUnpaidDeposits(){
+    return contracts.filter(c => !c.deposit_paid);
+  }
+
+  function getOpenBalances(){
+    return contracts.filter(c => !c.balance_paid);
+  }
+
+  function officeMorningBrief(){
+    const followUps = getFollowUpsDue();
+    const upcoming = getUpcomingShoots(5);
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "AI OFFICE MANAGER - MORNING BRIEF\n\n";
+
+    output += "Good morning Caz.\n\n";
+
+    output += "Snapshot:\n";
+    output += "- Total leads: " + leads.length + "\n";
+    output += "- Active contracts: " + contracts.length + "\n";
+    output += "- Follow-ups due: " + followUps.length + "\n";
+    output += "- Upcoming shoots: " + upcoming.length + "\n";
+    output += "- Contracts without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Open balances: " + openBalances.length + "\n\n";
+
+    output += "Money:\n";
+    output += "- Booked revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "- Deposits received: " + formatMoney(depositsReceived) + "\n";
+    output += "- Outstanding balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Upcoming Shoots:\n";
+
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nRecommended Next Move:\n";
+
+    if(followUps.length > 0){
+      output += "Follow up with " + followUps[0].name + " first.";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(openBalances.length > 0){
+      output += "Send a balance reminder to " + openBalances[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeTodayTasks(){
+    const followUps = getFollowUpsDue();
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+    const upcoming = getUpcomingShoots(3);
+
+    let output = "TODAY'S TASKS\n\n";
+    let taskNumber = 1;
+
+    followUps.slice(0, 5).forEach(l => {
+      output += taskNumber + ". Follow up with " + l.name + " about " + l.service + ".\n";
+      taskNumber++;
+    });
+
+    unpaidDeposits.slice(0, 5).forEach(c => {
+      output += taskNumber + ". Send deposit reminder to " + c.client_name + " for " + formatMoney(c.deposit) + ".\n";
+      taskNumber++;
+    });
+
+    openBalances.slice(0, 5).forEach(c => {
+      if(c.balance_paid) return;
+      output += taskNumber + ". Check balance status for " + c.client_name + " - " + formatMoney(c.balance) + ".\n";
+      taskNumber++;
+    });
+
+    upcoming.slice(0, 3).forEach(c => {
+      output += taskNumber + ". Confirm shoot details for " + c.client_name + " on " + c.session_date + ".\n";
+      taskNumber++;
+    });
+
+    if(taskNumber === 1){
+      output += "No major tasks right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeClientRisks(){
+    const noFollowUp = leads.filter(l =>
+      !l.next_followup &&
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed"
+    );
+
+    const quoteSent = leads.filter(l => l.status === "Quote Sent");
+    const unpaidDeposits = getUnpaidDeposits();
+
+    let output = "CLIENT RISK CHECK\n\n";
+
+    output += "Leads With No Follow-Up Date:\n";
+    if(noFollowUp.length === 0){
+      output += "- None\n";
+    } else {
+      noFollowUp.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nQuote Sent But Not Booked:\n";
+    if(quoteSent.length === 0){
+      output += "- None\n";
+    } else {
+      quoteSent.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nContracts Without Deposit Paid:\n";
+    if(unpaidDeposits.length === 0){
+      output += "- None\n";
+    } else {
+      unpaidDeposits.forEach(c => {
+        output += "- " + c.client_name + " | Deposit: " + formatMoney(c.deposit) + "\n";
+      });
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeRevenueReport(){
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+    let paidInFullCount = 0;
+    let signedCount = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+
+      if(c.balance_paid){
+        paidInFullCount++;
+      }
+
+      if(c.signed){
+        signedCount++;
+      }
+    });
+
+    let output = "REVENUE REPORT\n\n";
+
+    output += "Booked Revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "Deposits Received: " + formatMoney(depositsReceived) + "\n";
+    output += "Outstanding Balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Contracts:\n";
+    output += "- Total contracts: " + contracts.length + "\n";
+    output += "- Signed contracts: " + signedCount + "\n";
+    output += "- Paid in full: " + paidInFullCount + "\n\n";
+
+    output += "Revenue Breakdown:\n";
+
+    contracts.forEach(c => {
+      output += "- " + c.client_name + " | " + c.service + " | Total: " + formatMoney(c.total) + " | Balance: " + formatMoney(c.balance) + "\n";
+    });
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeFollowUpMessage(){
+    const followUps = getFollowUpsDue();
+
+    if(followUps.length === 0){
+      document.getElementById("officeOutput").innerText =
+        "No follow-up clients found. Add a next follow-up date to a lead first.";
+      return;
+    }
+
+    const lead = followUps[0];
+
+    const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I'm happy to help with the next steps whenever you're ready.
+
+Thank you,
+Caz Visuals`;
+
+    document.getElementById("officeOutput").innerText = message;
+  }
+
+  function copyOfficeOutput(){
+    const text = document.getElementById("officeOutput").innerText;
+
+    if(!text){
+      alert("Generate an Office Manager response first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Office Manager output copied.");
+  }
+
+  loadLeads();
   }
 
   async function markContacted(id){
     const today = new Date().toISOString().split("T")[0];
     const { error } = await db.from("leads").update({ status:"Contacted", last_contacted:today }).eq("id", id);
     if(error) alert("Error: " + error.message);
-    loadLeads();
+  
+  function formatMoney(value){
+    return "$" + Number(value || 0);
+  }
+
+  function getFollowUpsDue(){
+    const today = new Date();
+
+    return leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+  }
+
+  function getUpcomingShoots(limit){
+    return contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, limit || 5);
+  }
+
+  function getUnpaidDeposits(){
+    return contracts.filter(c => !c.deposit_paid);
+  }
+
+  function getOpenBalances(){
+    return contracts.filter(c => !c.balance_paid);
+  }
+
+  function officeMorningBrief(){
+    const followUps = getFollowUpsDue();
+    const upcoming = getUpcomingShoots(5);
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "AI OFFICE MANAGER - MORNING BRIEF\n\n";
+
+    output += "Good morning Caz.\n\n";
+
+    output += "Snapshot:\n";
+    output += "- Total leads: " + leads.length + "\n";
+    output += "- Active contracts: " + contracts.length + "\n";
+    output += "- Follow-ups due: " + followUps.length + "\n";
+    output += "- Upcoming shoots: " + upcoming.length + "\n";
+    output += "- Contracts without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Open balances: " + openBalances.length + "\n\n";
+
+    output += "Money:\n";
+    output += "- Booked revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "- Deposits received: " + formatMoney(depositsReceived) + "\n";
+    output += "- Outstanding balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Upcoming Shoots:\n";
+
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nRecommended Next Move:\n";
+
+    if(followUps.length > 0){
+      output += "Follow up with " + followUps[0].name + " first.";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(openBalances.length > 0){
+      output += "Send a balance reminder to " + openBalances[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeTodayTasks(){
+    const followUps = getFollowUpsDue();
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+    const upcoming = getUpcomingShoots(3);
+
+    let output = "TODAY'S TASKS\n\n";
+    let taskNumber = 1;
+
+    followUps.slice(0, 5).forEach(l => {
+      output += taskNumber + ". Follow up with " + l.name + " about " + l.service + ".\n";
+      taskNumber++;
+    });
+
+    unpaidDeposits.slice(0, 5).forEach(c => {
+      output += taskNumber + ". Send deposit reminder to " + c.client_name + " for " + formatMoney(c.deposit) + ".\n";
+      taskNumber++;
+    });
+
+    openBalances.slice(0, 5).forEach(c => {
+      if(c.balance_paid) return;
+      output += taskNumber + ". Check balance status for " + c.client_name + " - " + formatMoney(c.balance) + ".\n";
+      taskNumber++;
+    });
+
+    upcoming.slice(0, 3).forEach(c => {
+      output += taskNumber + ". Confirm shoot details for " + c.client_name + " on " + c.session_date + ".\n";
+      taskNumber++;
+    });
+
+    if(taskNumber === 1){
+      output += "No major tasks right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeClientRisks(){
+    const noFollowUp = leads.filter(l =>
+      !l.next_followup &&
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed"
+    );
+
+    const quoteSent = leads.filter(l => l.status === "Quote Sent");
+    const unpaidDeposits = getUnpaidDeposits();
+
+    let output = "CLIENT RISK CHECK\n\n";
+
+    output += "Leads With No Follow-Up Date:\n";
+    if(noFollowUp.length === 0){
+      output += "- None\n";
+    } else {
+      noFollowUp.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nQuote Sent But Not Booked:\n";
+    if(quoteSent.length === 0){
+      output += "- None\n";
+    } else {
+      quoteSent.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nContracts Without Deposit Paid:\n";
+    if(unpaidDeposits.length === 0){
+      output += "- None\n";
+    } else {
+      unpaidDeposits.forEach(c => {
+        output += "- " + c.client_name + " | Deposit: " + formatMoney(c.deposit) + "\n";
+      });
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeRevenueReport(){
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+    let paidInFullCount = 0;
+    let signedCount = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+
+      if(c.balance_paid){
+        paidInFullCount++;
+      }
+
+      if(c.signed){
+        signedCount++;
+      }
+    });
+
+    let output = "REVENUE REPORT\n\n";
+
+    output += "Booked Revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "Deposits Received: " + formatMoney(depositsReceived) + "\n";
+    output += "Outstanding Balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Contracts:\n";
+    output += "- Total contracts: " + contracts.length + "\n";
+    output += "- Signed contracts: " + signedCount + "\n";
+    output += "- Paid in full: " + paidInFullCount + "\n\n";
+
+    output += "Revenue Breakdown:\n";
+
+    contracts.forEach(c => {
+      output += "- " + c.client_name + " | " + c.service + " | Total: " + formatMoney(c.total) + " | Balance: " + formatMoney(c.balance) + "\n";
+    });
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeFollowUpMessage(){
+    const followUps = getFollowUpsDue();
+
+    if(followUps.length === 0){
+      document.getElementById("officeOutput").innerText =
+        "No follow-up clients found. Add a next follow-up date to a lead first.";
+      return;
+    }
+
+    const lead = followUps[0];
+
+    const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I'm happy to help with the next steps whenever you're ready.
+
+Thank you,
+Caz Visuals`;
+
+    document.getElementById("officeOutput").innerText = message;
+  }
+
+  function copyOfficeOutput(){
+    const text = document.getElementById("officeOutput").innerText;
+
+    if(!text){
+      alert("Generate an Office Manager response first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Office Manager output copied.");
+  }
+
+  loadLeads();
   }
 
   function getFollowUpStatus(date){
@@ -1386,6 +2729,272 @@ Caz Visuals`;
     }
 
     document.getElementById("dailyBriefOutput").innerText = output;
+  }
+
+
+  function formatMoney(value){
+    return "$" + Number(value || 0);
+  }
+
+  function getFollowUpsDue(){
+    const today = new Date();
+
+    return leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+  }
+
+  function getUpcomingShoots(limit){
+    return contracts
+      .filter(c => c.session_date)
+      .sort((a,b) => new Date(a.session_date) - new Date(b.session_date))
+      .slice(0, limit || 5);
+  }
+
+  function getUnpaidDeposits(){
+    return contracts.filter(c => !c.deposit_paid);
+  }
+
+  function getOpenBalances(){
+    return contracts.filter(c => !c.balance_paid);
+  }
+
+  function officeMorningBrief(){
+    const followUps = getFollowUpsDue();
+    const upcoming = getUpcomingShoots(5);
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+    });
+
+    let output = "AI OFFICE MANAGER - MORNING BRIEF\n\n";
+
+    output += "Good morning Caz.\n\n";
+
+    output += "Snapshot:\n";
+    output += "- Total leads: " + leads.length + "\n";
+    output += "- Active contracts: " + contracts.length + "\n";
+    output += "- Follow-ups due: " + followUps.length + "\n";
+    output += "- Upcoming shoots: " + upcoming.length + "\n";
+    output += "- Contracts without deposit paid: " + unpaidDeposits.length + "\n";
+    output += "- Open balances: " + openBalances.length + "\n\n";
+
+    output += "Money:\n";
+    output += "- Booked revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "- Deposits received: " + formatMoney(depositsReceived) + "\n";
+    output += "- Outstanding balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Upcoming Shoots:\n";
+
+    if(upcoming.length === 0){
+      output += "- No upcoming shoots scheduled.\n";
+    } else {
+      upcoming.forEach(c => {
+        output += "- " + c.session_date + " | " + c.client_name + " | " + c.service + "\n";
+      });
+    }
+
+    output += "\nRecommended Next Move:\n";
+
+    if(followUps.length > 0){
+      output += "Follow up with " + followUps[0].name + " first.";
+    } else if(unpaidDeposits.length > 0){
+      output += "Send a deposit reminder to " + unpaidDeposits[0].client_name + ".";
+    } else if(openBalances.length > 0){
+      output += "Send a balance reminder to " + openBalances[0].client_name + ".";
+    } else if(upcoming.length > 0){
+      output += "Confirm final details for " + upcoming[0].client_name + ".";
+    } else {
+      output += "No urgent action right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeTodayTasks(){
+    const followUps = getFollowUpsDue();
+    const unpaidDeposits = getUnpaidDeposits();
+    const openBalances = getOpenBalances();
+    const upcoming = getUpcomingShoots(3);
+
+    let output = "TODAY'S TASKS\n\n";
+    let taskNumber = 1;
+
+    followUps.slice(0, 5).forEach(l => {
+      output += taskNumber + ". Follow up with " + l.name + " about " + l.service + ".\n";
+      taskNumber++;
+    });
+
+    unpaidDeposits.slice(0, 5).forEach(c => {
+      output += taskNumber + ". Send deposit reminder to " + c.client_name + " for " + formatMoney(c.deposit) + ".\n";
+      taskNumber++;
+    });
+
+    openBalances.slice(0, 5).forEach(c => {
+      if(c.balance_paid) return;
+      output += taskNumber + ". Check balance status for " + c.client_name + " - " + formatMoney(c.balance) + ".\n";
+      taskNumber++;
+    });
+
+    upcoming.slice(0, 3).forEach(c => {
+      output += taskNumber + ". Confirm shoot details for " + c.client_name + " on " + c.session_date + ".\n";
+      taskNumber++;
+    });
+
+    if(taskNumber === 1){
+      output += "No major tasks right now.";
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeClientRisks(){
+    const noFollowUp = leads.filter(l =>
+      !l.next_followup &&
+      l.status !== "Booked" &&
+      l.status !== "Delivered" &&
+      l.status !== "Closed"
+    );
+
+    const quoteSent = leads.filter(l => l.status === "Quote Sent");
+    const unpaidDeposits = getUnpaidDeposits();
+
+    let output = "CLIENT RISK CHECK\n\n";
+
+    output += "Leads With No Follow-Up Date:\n";
+    if(noFollowUp.length === 0){
+      output += "- None\n";
+    } else {
+      noFollowUp.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nQuote Sent But Not Booked:\n";
+    if(quoteSent.length === 0){
+      output += "- None\n";
+    } else {
+      quoteSent.forEach(l => {
+        output += "- " + l.name + " | " + l.service + "\n";
+      });
+    }
+
+    output += "\nContracts Without Deposit Paid:\n";
+    if(unpaidDeposits.length === 0){
+      output += "- None\n";
+    } else {
+      unpaidDeposits.forEach(c => {
+        output += "- " + c.client_name + " | Deposit: " + formatMoney(c.deposit) + "\n";
+      });
+    }
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeRevenueReport(){
+    let bookedRevenue = 0;
+    let depositsReceived = 0;
+    let outstandingBalance = 0;
+    let paidInFullCount = 0;
+    let signedCount = 0;
+
+    contracts.forEach(c => {
+      bookedRevenue += Number(c.total || 0);
+
+      if(c.deposit_paid){
+        depositsReceived += Number(c.deposit || 0);
+      }
+
+      if(!c.balance_paid){
+        outstandingBalance += Number(c.balance || 0);
+      }
+
+      if(c.balance_paid){
+        paidInFullCount++;
+      }
+
+      if(c.signed){
+        signedCount++;
+      }
+    });
+
+    let output = "REVENUE REPORT\n\n";
+
+    output += "Booked Revenue: " + formatMoney(bookedRevenue) + "\n";
+    output += "Deposits Received: " + formatMoney(depositsReceived) + "\n";
+    output += "Outstanding Balance: " + formatMoney(outstandingBalance) + "\n\n";
+
+    output += "Contracts:\n";
+    output += "- Total contracts: " + contracts.length + "\n";
+    output += "- Signed contracts: " + signedCount + "\n";
+    output += "- Paid in full: " + paidInFullCount + "\n\n";
+
+    output += "Revenue Breakdown:\n";
+
+    contracts.forEach(c => {
+      output += "- " + c.client_name + " | " + c.service + " | Total: " + formatMoney(c.total) + " | Balance: " + formatMoney(c.balance) + "\n";
+    });
+
+    document.getElementById("officeOutput").innerText = output;
+  }
+
+  function officeFollowUpMessage(){
+    const followUps = getFollowUpsDue();
+
+    if(followUps.length === 0){
+      document.getElementById("officeOutput").innerText =
+        "No follow-up clients found. Add a next follow-up date to a lead first.";
+      return;
+    }
+
+    const lead = followUps[0];
+
+    const message =
+`Hi ${lead.name},
+
+Just checking in regarding your ${lead.service} inquiry with Caz Visuals.
+
+I wanted to see if you had any questions or if you would like to move forward with booking your session.
+
+I'm happy to help with the next steps whenever you're ready.
+
+Thank you,
+Caz Visuals`;
+
+    document.getElementById("officeOutput").innerText = message;
+  }
+
+  function copyOfficeOutput(){
+    const text = document.getElementById("officeOutput").innerText;
+
+    if(!text){
+      alert("Generate an Office Manager response first.");
+      return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("Office Manager output copied.");
   }
 
   loadLeads();

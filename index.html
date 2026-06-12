@@ -46,6 +46,7 @@
     <a href="#aiAssistant">AI</a>
     <a href="#dailyBrief">Daily Brief</a>
     <a href="#officeManager">Office Manager</a>
+    <a href="#taskCenter">Task Center</a>
     <a href="#activities">Activities</a>
   </div>
 </div>
@@ -204,6 +205,22 @@
   <button onclick="officeFollowUpMessage()">Write Follow-Up Message</button>
   <div id="officeOutput" class="reply-box"></div>
   <button onclick="copyOfficeOutput()">Copy Office Manager Output</button>
+</div>
+
+
+<div class="card" id="taskCenter">
+  <h2>AI Task Center</h2>
+  <p class="small">
+    Creates action items inside your Activity Timeline based on your leads and contracts.
+  </p>
+
+  <button onclick="createFollowUpTasks()">Create Follow-Up Tasks</button>
+  <button onclick="createDepositReminderTasks()">Create Deposit Reminder Tasks</button>
+  <button onclick="createBalanceReminderTasks()">Create Balance Reminder Tasks</button>
+  <button onclick="createShootPrepTasks()">Create Shoot Prep Tasks</button>
+  <button onclick="createAllAITasks()">Create All Suggested Tasks</button>
+
+  <div id="taskCenterOutput" class="reply-box"></div>
 </div>
 
 <div class="card" id="activities">
@@ -552,6 +569,176 @@ Caz Visuals`;
 
     navigator.clipboard.writeText(text);
     alert("Office Manager output copied.");
+  }
+
+
+  function activityAlreadyExists(activityType, activityNote){
+    return activities.some(a =>
+      a.activity_type === activityType &&
+      a.activity_note === activityNote
+    );
+  }
+
+  async function createTaskActivity(leadId, activityType, activityNote){
+    if(activityAlreadyExists(activityType, activityNote)){
+      return false;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "AI Task Center"
+    }]);
+
+    if(error){
+      console.log("Task creation error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function createFollowUpTasks(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    let created = 0;
+
+    for(const lead of followUps){
+      const note =
+        "Follow up with " + lead.name +
+        " about " + lead.service +
+        ". Follow-up date: " + lead.next_followup + ".";
+
+      const didCreate = await createTaskActivity(
+        lead.id,
+        "Task - Follow Up",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
+  }
+
+  async function createDepositReminderTasks(){
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+
+    let created = 0;
+
+    for(const contract of unpaidDeposits){
+      const note =
+        "Send deposit reminder to " + contract.client_name +
+        ". Deposit due: $" + contract.deposit +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Deposit Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Deposit reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (unpaidDeposits.length - created);
+  }
+
+  async function createBalanceReminderTasks(){
+    const openBalances = contracts.filter(c => !c.balance_paid);
+
+    let created = 0;
+
+    for(const contract of openBalances){
+      const note =
+        "Send balance reminder to " + contract.client_name +
+        ". Balance due: $" + contract.balance +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Balance Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Balance reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (openBalances.length - created);
+  }
+
+  async function createShootPrepTasks(){
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    const upcomingShoots = contracts.filter(c => {
+      if(!c.session_date) return false;
+
+      const shootDate = new Date(c.session_date);
+
+      return shootDate >= today && shootDate <= sevenDaysFromNow;
+    });
+
+    let created = 0;
+
+    for(const contract of upcomingShoots){
+      const note =
+        "Prepare for upcoming shoot with " + contract.client_name +
+        ". Date: " + contract.session_date +
+        ". Service: " + contract.service +
+        ". Location: " + (contract.location || "To be confirmed") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Shoot Prep",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Shoot prep task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (upcomingShoots.length - created);
+  }
+
+  async function createAllAITasks(){
+    await createFollowUpTasks();
+    await createDepositReminderTasks();
+    await createBalanceReminderTasks();
+    await createShootPrepTasks();
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
   }
 
   loadLeads();
@@ -948,6 +1135,176 @@ Caz Visuals`;
     alert("Office Manager output copied.");
   }
 
+
+  function activityAlreadyExists(activityType, activityNote){
+    return activities.some(a =>
+      a.activity_type === activityType &&
+      a.activity_note === activityNote
+    );
+  }
+
+  async function createTaskActivity(leadId, activityType, activityNote){
+    if(activityAlreadyExists(activityType, activityNote)){
+      return false;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "AI Task Center"
+    }]);
+
+    if(error){
+      console.log("Task creation error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function createFollowUpTasks(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    let created = 0;
+
+    for(const lead of followUps){
+      const note =
+        "Follow up with " + lead.name +
+        " about " + lead.service +
+        ". Follow-up date: " + lead.next_followup + ".";
+
+      const didCreate = await createTaskActivity(
+        lead.id,
+        "Task - Follow Up",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
+  }
+
+  async function createDepositReminderTasks(){
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+
+    let created = 0;
+
+    for(const contract of unpaidDeposits){
+      const note =
+        "Send deposit reminder to " + contract.client_name +
+        ". Deposit due: $" + contract.deposit +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Deposit Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Deposit reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (unpaidDeposits.length - created);
+  }
+
+  async function createBalanceReminderTasks(){
+    const openBalances = contracts.filter(c => !c.balance_paid);
+
+    let created = 0;
+
+    for(const contract of openBalances){
+      const note =
+        "Send balance reminder to " + contract.client_name +
+        ". Balance due: $" + contract.balance +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Balance Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Balance reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (openBalances.length - created);
+  }
+
+  async function createShootPrepTasks(){
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    const upcomingShoots = contracts.filter(c => {
+      if(!c.session_date) return false;
+
+      const shootDate = new Date(c.session_date);
+
+      return shootDate >= today && shootDate <= sevenDaysFromNow;
+    });
+
+    let created = 0;
+
+    for(const contract of upcomingShoots){
+      const note =
+        "Prepare for upcoming shoot with " + contract.client_name +
+        ". Date: " + contract.session_date +
+        ". Service: " + contract.service +
+        ". Location: " + (contract.location || "To be confirmed") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Shoot Prep",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Shoot prep task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (upcomingShoots.length - created);
+  }
+
+  async function createAllAITasks(){
+    await createFollowUpTasks();
+    await createDepositReminderTasks();
+    await createBalanceReminderTasks();
+    await createShootPrepTasks();
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
+  }
+
   loadLeads();
   }
 
@@ -1268,6 +1625,176 @@ Caz Visuals`;
     alert("Office Manager output copied.");
   }
 
+
+  function activityAlreadyExists(activityType, activityNote){
+    return activities.some(a =>
+      a.activity_type === activityType &&
+      a.activity_note === activityNote
+    );
+  }
+
+  async function createTaskActivity(leadId, activityType, activityNote){
+    if(activityAlreadyExists(activityType, activityNote)){
+      return false;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "AI Task Center"
+    }]);
+
+    if(error){
+      console.log("Task creation error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function createFollowUpTasks(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    let created = 0;
+
+    for(const lead of followUps){
+      const note =
+        "Follow up with " + lead.name +
+        " about " + lead.service +
+        ". Follow-up date: " + lead.next_followup + ".";
+
+      const didCreate = await createTaskActivity(
+        lead.id,
+        "Task - Follow Up",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
+  }
+
+  async function createDepositReminderTasks(){
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+
+    let created = 0;
+
+    for(const contract of unpaidDeposits){
+      const note =
+        "Send deposit reminder to " + contract.client_name +
+        ". Deposit due: $" + contract.deposit +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Deposit Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Deposit reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (unpaidDeposits.length - created);
+  }
+
+  async function createBalanceReminderTasks(){
+    const openBalances = contracts.filter(c => !c.balance_paid);
+
+    let created = 0;
+
+    for(const contract of openBalances){
+      const note =
+        "Send balance reminder to " + contract.client_name +
+        ". Balance due: $" + contract.balance +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Balance Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Balance reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (openBalances.length - created);
+  }
+
+  async function createShootPrepTasks(){
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    const upcomingShoots = contracts.filter(c => {
+      if(!c.session_date) return false;
+
+      const shootDate = new Date(c.session_date);
+
+      return shootDate >= today && shootDate <= sevenDaysFromNow;
+    });
+
+    let created = 0;
+
+    for(const contract of upcomingShoots){
+      const note =
+        "Prepare for upcoming shoot with " + contract.client_name +
+        ". Date: " + contract.session_date +
+        ". Service: " + contract.service +
+        ". Location: " + (contract.location || "To be confirmed") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Shoot Prep",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Shoot prep task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (upcomingShoots.length - created);
+  }
+
+  async function createAllAITasks(){
+    await createFollowUpTasks();
+    await createDepositReminderTasks();
+    await createBalanceReminderTasks();
+    await createShootPrepTasks();
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
+  }
+
   loadLeads();
     }
   }
@@ -1555,6 +2082,176 @@ Caz Visuals`;
     alert("Office Manager output copied.");
   }
 
+
+  function activityAlreadyExists(activityType, activityNote){
+    return activities.some(a =>
+      a.activity_type === activityType &&
+      a.activity_note === activityNote
+    );
+  }
+
+  async function createTaskActivity(leadId, activityType, activityNote){
+    if(activityAlreadyExists(activityType, activityNote)){
+      return false;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "AI Task Center"
+    }]);
+
+    if(error){
+      console.log("Task creation error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function createFollowUpTasks(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    let created = 0;
+
+    for(const lead of followUps){
+      const note =
+        "Follow up with " + lead.name +
+        " about " + lead.service +
+        ". Follow-up date: " + lead.next_followup + ".";
+
+      const didCreate = await createTaskActivity(
+        lead.id,
+        "Task - Follow Up",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
+  }
+
+  async function createDepositReminderTasks(){
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+
+    let created = 0;
+
+    for(const contract of unpaidDeposits){
+      const note =
+        "Send deposit reminder to " + contract.client_name +
+        ". Deposit due: $" + contract.deposit +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Deposit Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Deposit reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (unpaidDeposits.length - created);
+  }
+
+  async function createBalanceReminderTasks(){
+    const openBalances = contracts.filter(c => !c.balance_paid);
+
+    let created = 0;
+
+    for(const contract of openBalances){
+      const note =
+        "Send balance reminder to " + contract.client_name +
+        ". Balance due: $" + contract.balance +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Balance Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Balance reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (openBalances.length - created);
+  }
+
+  async function createShootPrepTasks(){
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    const upcomingShoots = contracts.filter(c => {
+      if(!c.session_date) return false;
+
+      const shootDate = new Date(c.session_date);
+
+      return shootDate >= today && shootDate <= sevenDaysFromNow;
+    });
+
+    let created = 0;
+
+    for(const contract of upcomingShoots){
+      const note =
+        "Prepare for upcoming shoot with " + contract.client_name +
+        ". Date: " + contract.session_date +
+        ". Service: " + contract.service +
+        ". Location: " + (contract.location || "To be confirmed") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Shoot Prep",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Shoot prep task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (upcomingShoots.length - created);
+  }
+
+  async function createAllAITasks(){
+    await createFollowUpTasks();
+    await createDepositReminderTasks();
+    await createBalanceReminderTasks();
+    await createShootPrepTasks();
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
+  }
+
   loadLeads();
   }
 
@@ -1826,6 +2523,176 @@ Caz Visuals`;
 
     navigator.clipboard.writeText(text);
     alert("Office Manager output copied.");
+  }
+
+
+  function activityAlreadyExists(activityType, activityNote){
+    return activities.some(a =>
+      a.activity_type === activityType &&
+      a.activity_note === activityNote
+    );
+  }
+
+  async function createTaskActivity(leadId, activityType, activityNote){
+    if(activityAlreadyExists(activityType, activityNote)){
+      return false;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "AI Task Center"
+    }]);
+
+    if(error){
+      console.log("Task creation error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function createFollowUpTasks(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    let created = 0;
+
+    for(const lead of followUps){
+      const note =
+        "Follow up with " + lead.name +
+        " about " + lead.service +
+        ". Follow-up date: " + lead.next_followup + ".";
+
+      const didCreate = await createTaskActivity(
+        lead.id,
+        "Task - Follow Up",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
+  }
+
+  async function createDepositReminderTasks(){
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+
+    let created = 0;
+
+    for(const contract of unpaidDeposits){
+      const note =
+        "Send deposit reminder to " + contract.client_name +
+        ". Deposit due: $" + contract.deposit +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Deposit Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Deposit reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (unpaidDeposits.length - created);
+  }
+
+  async function createBalanceReminderTasks(){
+    const openBalances = contracts.filter(c => !c.balance_paid);
+
+    let created = 0;
+
+    for(const contract of openBalances){
+      const note =
+        "Send balance reminder to " + contract.client_name +
+        ". Balance due: $" + contract.balance +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Balance Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Balance reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (openBalances.length - created);
+  }
+
+  async function createShootPrepTasks(){
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    const upcomingShoots = contracts.filter(c => {
+      if(!c.session_date) return false;
+
+      const shootDate = new Date(c.session_date);
+
+      return shootDate >= today && shootDate <= sevenDaysFromNow;
+    });
+
+    let created = 0;
+
+    for(const contract of upcomingShoots){
+      const note =
+        "Prepare for upcoming shoot with " + contract.client_name +
+        ". Date: " + contract.session_date +
+        ". Service: " + contract.service +
+        ". Location: " + (contract.location || "To be confirmed") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Shoot Prep",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Shoot prep task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (upcomingShoots.length - created);
+  }
+
+  async function createAllAITasks(){
+    await createFollowUpTasks();
+    await createDepositReminderTasks();
+    await createBalanceReminderTasks();
+    await createShootPrepTasks();
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
   }
 
   loadLeads();
@@ -2995,6 +3862,176 @@ Caz Visuals`;
 
     navigator.clipboard.writeText(text);
     alert("Office Manager output copied.");
+  }
+
+
+  function activityAlreadyExists(activityType, activityNote){
+    return activities.some(a =>
+      a.activity_type === activityType &&
+      a.activity_note === activityNote
+    );
+  }
+
+  async function createTaskActivity(leadId, activityType, activityNote){
+    if(activityAlreadyExists(activityType, activityNote)){
+      return false;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: leadId || null,
+      activity_type: activityType,
+      activity_note: activityNote,
+      created_by: "AI Task Center"
+    }]);
+
+    if(error){
+      console.log("Task creation error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function createFollowUpTasks(){
+    const today = new Date();
+
+    const followUps = leads.filter(l => {
+      if(!l.next_followup) return false;
+
+      const followUpDate = new Date(l.next_followup);
+
+      return followUpDate <= today &&
+        l.status !== "Booked" &&
+        l.status !== "Delivered" &&
+        l.status !== "Closed";
+    });
+
+    let created = 0;
+
+    for(const lead of followUps){
+      const note =
+        "Follow up with " + lead.name +
+        " about " + lead.service +
+        ". Follow-up date: " + lead.next_followup + ".";
+
+      const didCreate = await createTaskActivity(
+        lead.id,
+        "Task - Follow Up",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Follow-up task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (followUps.length - created);
+  }
+
+  async function createDepositReminderTasks(){
+    const unpaidDeposits = contracts.filter(c => !c.deposit_paid);
+
+    let created = 0;
+
+    for(const contract of unpaidDeposits){
+      const note =
+        "Send deposit reminder to " + contract.client_name +
+        ". Deposit due: $" + contract.deposit +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Deposit Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Deposit reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (unpaidDeposits.length - created);
+  }
+
+  async function createBalanceReminderTasks(){
+    const openBalances = contracts.filter(c => !c.balance_paid);
+
+    let created = 0;
+
+    for(const contract of openBalances){
+      const note =
+        "Send balance reminder to " + contract.client_name +
+        ". Balance due: $" + contract.balance +
+        ". Contract: " + (contract.contract_number || "Not assigned") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Balance Reminder",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Balance reminder task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (openBalances.length - created);
+  }
+
+  async function createShootPrepTasks(){
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    const upcomingShoots = contracts.filter(c => {
+      if(!c.session_date) return false;
+
+      const shootDate = new Date(c.session_date);
+
+      return shootDate >= today && shootDate <= sevenDaysFromNow;
+    });
+
+    let created = 0;
+
+    for(const contract of upcomingShoots){
+      const note =
+        "Prepare for upcoming shoot with " + contract.client_name +
+        ". Date: " + contract.session_date +
+        ". Service: " + contract.service +
+        ". Location: " + (contract.location || "To be confirmed") + ".";
+
+      const didCreate = await createTaskActivity(
+        contract.lead_id || null,
+        "Task - Shoot Prep",
+        note
+      );
+
+      if(didCreate) created++;
+    }
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "Shoot prep task scan complete.\n\nCreated: " + created +
+      "\nAlready existing or skipped: " + (upcomingShoots.length - created);
+  }
+
+  async function createAllAITasks(){
+    await createFollowUpTasks();
+    await createDepositReminderTasks();
+    await createBalanceReminderTasks();
+    await createShootPrepTasks();
+
+    await loadActivities();
+
+    document.getElementById("taskCenterOutput").innerText =
+      "AI Task Center finished scanning your CRM.\n\nCheck the Activity Timeline for new tasks.";
   }
 
   loadLeads();

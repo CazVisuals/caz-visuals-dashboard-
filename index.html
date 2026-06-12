@@ -5882,7 +5882,85 @@ async function sendAIEmailToClient(contractId){
   alert("AI email sent successfully.");
 }
 
-  
+  async function generateAndSendAIDepositReminder(contractId){
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const lead = getLeadForContract(contract);
+
+  if(!lead || !lead.email){
+    alert("No client email found.");
+    return;
+  }
+
+  const prompt =
+`Write a professional deposit reminder email for this Caz Visuals client.
+
+Client: ${contract.client_name}
+Service: ${contract.service}
+Session Date: ${contract.session_date || "To be confirmed"}
+Location: ${contract.location || "To be confirmed"}
+Deposit Due: $${contract.deposit}
+Total: $${contract.total}
+Portal Link: ${getPortalLink(contract.contract_number)}
+
+Keep it friendly, short, and professional.`;
+
+  const aiResponse = await fetch("/.netlify/functions/ai-assistant", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      leads,
+      contracts,
+      activities
+    })
+  });
+
+  const aiData = await aiResponse.json();
+
+  if(!aiResponse.ok){
+    alert("AI failed: " + JSON.stringify(aiData));
+    return;
+  }
+
+  const message = aiData.reply;
+
+  document.getElementById("openAiOutput").innerText = message;
+
+  if(!confirm("Send this AI deposit reminder to " + lead.email + "?")){
+    return;
+  }
+
+  const emailResponse = await fetch("/.netlify/functions/send-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: lead.email,
+      subject: "Caz Visuals Deposit Reminder",
+      message
+    })
+  });
+
+  const emailData = await emailResponse.json();
+
+  if(!emailResponse.ok){
+    alert("Email failed: " + JSON.stringify(emailData));
+    return;
+  }
+
+  await logActivity(
+    contract.lead_id || null,
+    "AI Deposit Reminder Sent",
+    "AI deposit reminder sent to " + lead.email + " for $" + contract.deposit + "."
+  );
+
+  alert("AI deposit reminder sent successfully.");
+}
   
   loadLeads();
   loadContracts();

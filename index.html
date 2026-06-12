@@ -4001,6 +4001,9 @@ Thank you for choosing Caz Visuals.`;
           <button onclick="markSigned(${contract.id})">Mark Signed</button>
           <button onclick="markDepositPaid(${contract.id})">Mark Deposit Paid</button>
           <button onclick="markBalancePaid(${contract.id})">Mark Balance Paid</button>
+          <button onclick="sendAIEmailToClient(${contract.id})">
+  Send Current AI Message To Client
+</button>
 
           <button onclick="sendPortalLinkEmail(${contract.id})">
   Send Portal Link Email
@@ -5870,6 +5873,8 @@ async function sendAIEmailToClient(contractId){
 
   alert("AI email sent successfully.");
 }
+
+  
   
   loadLeads();
   loadContracts();

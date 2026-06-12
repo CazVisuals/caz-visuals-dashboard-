@@ -9,10 +9,7 @@ exports.handler = async function() {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          {
-            role: "user",
-            content: "Say Caz Visuals AI is working."
-          }
+          { role: "user", content: "Say Caz Visuals AI is working." }
         ]
       })
     });

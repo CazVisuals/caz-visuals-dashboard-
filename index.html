@@ -5809,6 +5809,67 @@ function copyOpenAIOutput(){
   navigator.clipboard.writeText(text);
   alert("AI output copied.");
 }
+
+  function getLeadForContract(contract){
+  return leads.find(l =>
+    String(l.id) === String(contract.lead_id) ||
+    String(l.name || "").toLowerCase() === String(contract.client_name || "").toLowerCase()
+  );
+}
+
+async function sendAIEmailToClient(contractId){
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const lead = getLeadForContract(contract);
+
+  if(!lead || !lead.email){
+    alert("No client email found.");
+    return;
+  }
+
+  const aiText = document.getElementById("openAiOutput").innerText.trim();
+
+  if(!aiText){
+    alert("Generate an AI message first.");
+    return;
+  }
+
+  if(!confirm("Send the AI message to " + lead.email + "?")){
+    return;
+  }
+
+  const response = await fetch("/.netlify/functions/send-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      to: lead.email,
+      subject: "Caz Visuals Session Update",
+      message: aiText
+    })
+  });
+
+  const data = await response.json();
+
+  if(!response.ok){
+    alert("Email failed: " + JSON.stringify(data));
+    return;
+  }
+
+  await logActivity(
+    contract.lead_id || null,
+    "AI Email Sent",
+    "AI-generated email sent to " + lead.email + "."
+  );
+
+  alert("AI email sent successfully.");
+}
   
   loadLeads();
   loadContracts();

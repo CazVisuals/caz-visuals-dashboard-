@@ -5785,6 +5785,30 @@ Caz Visuals`;
 
   output.innerText = data.reply;
 } 
+
+async function aiSuggestToday(){
+  document.getElementById("aiPrompt").value =
+    "Review my CRM and tell me the top 5 things I should focus on today. Include follow-ups, deposits, balances, shoots, and urgent tasks.";
+  await askOpenAI();
+}
+
+async function aiWriteClientFollowUp(){
+  document.getElementById("aiPrompt").value =
+    "Find my most urgent lead or client needing follow-up and write a professional message I can send them.";
+  await askOpenAI();
+}
+
+function copyOpenAIOutput(){
+  const text = document.getElementById("openAiOutput").innerText;
+
+  if(!text){
+    alert("Generate an AI response first.");
+    return;
+  }
+
+  navigator.clipboard.writeText(text);
+  alert("AI output copied.");
+}
   
   loadLeads();
   loadContracts();

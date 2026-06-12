@@ -3989,6 +3989,9 @@ Thank you for choosing Caz Visuals.`;
           <button onclick="sendPortalLinkEmail(${contract.id})">
   Send Portal Link Email
 </button>
+<button onclick="sendDepositReminderEmail(${contract.id})">
+  Send Deposit Reminder Email
+</button>
 
           <button onclick="copyPortalLink('${contract.contract_number}')">Copy Client Portal Link</button>
           <button onclick="copyContractEmail(${contract.id})">Copy Contract Email</button>
@@ -5035,6 +5038,89 @@ Caz Visuals`;
 
 }
 
+  async function sendDepositReminderEmail(contractId){
+
+  const contract = contracts.find(c => Number(c.id) === Number(contractId));
+
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const lead = leads.find(l =>
+    Number(l.id) === Number(contract.lead_id)
+  );
+
+  const clientEmail = lead ? lead.email : "";
+
+  if(!clientEmail){
+    alert("No client email found. Make sure this contract is connected to a lead with an email.");
+    return;
+  }
+
+  if(!contract.contract_number){
+    alert("This contract does not have a contract number.");
+    return;
+  }
+
+  const portalLink =
+    "https://cazvisuals.netlify.app/client.html?contract=" +
+    encodeURIComponent(contract.contract_number);
+
+  const subject = "Caz Visuals Deposit Reminder";
+
+  const message =
+`Hi ${contract.client_name},
+
+This is a friendly reminder that the non-refundable deposit for your Caz Visuals session is still pending.
+
+Deposit Due: $${contract.deposit}
+
+You can review your agreement and session details here:
+
+${portalLink}
+
+Once the deposit is received, your session date will be officially secured.
+
+Thank you,
+Caz Visuals`;
+
+  try {
+
+    const response = await fetch("/.netlify/functions/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        to: clientEmail,
+        subject: subject,
+        message: message
+      })
+    });
+
+    const result = await response.json();
+
+    if(!response.ok){
+      alert("Deposit reminder email failed:\n\n" + JSON.stringify(result, null, 2));
+      return;
+    }
+
+    await logActivity(
+      contract.lead_id || null,
+      "Deposit Reminder Sent",
+      "Deposit reminder emailed to " + clientEmail + " for contract " + contract.contract_number + "."
+    );
+
+    alert("Deposit reminder email sent to " + clientEmail + ".");
+
+  } catch(error){
+
+    alert("Deposit reminder email error:\n\n" + error.message);
+
+  }
+
+}
   
   loadLeads();
   loadContracts();

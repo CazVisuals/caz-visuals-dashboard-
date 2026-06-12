@@ -331,73 +331,7 @@
 
     return "";
   }
-async function sendTestEmail() {
 
-  try {
-
-    const response = await fetch("/.netlify/functions/send-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        to: "cazimirconstant@gmail.com",
-        subject: "Caz Visuals CRM Test Email",
-        message: `
-Hello Caz,
-
-This is a test email from your Caz Visuals CRM.
-
-If you received this email, then:
-
-✓ Netlify Functions are working
-✓ Resend is connected
-✓ Environment variables are working
-✓ CRM email automation is working
-
-Next step:
-Contract emails
-Portal links
-Deposit reminders
-Balance reminders
-Gallery delivery notifications
-
-- Caz Visuals CRM
-        `
-      })
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-
-      alert(
-        "Email failed:\n\n" +
-        JSON.stringify(result, null, 2)
-      );
-
-      console.error(result);
-
-      return;
-    }
-
-    alert("✅ Test email sent successfully!");
-
-    console.log("Email sent:", result);
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert(
-      "Email error:\n\n" +
-      error.message
-    );
-
-  }
-
-}
-  
   async function updateLeadStatus(leadId, status){
     if(!leadId) return;
 
@@ -508,10 +442,7 @@ Gallery delivery notifications
     } else {
       output += "No urgent action right now.";
     }
-<button onclick="sendTestEmail()">
-  Send Test Email
-</button>
-    
+
     document.getElementById("officeOutput").innerText = output;
   }
 

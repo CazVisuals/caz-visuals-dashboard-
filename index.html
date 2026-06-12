@@ -5751,7 +5751,40 @@ Caz Visuals`;
 
   output.innerText = data.reply;
 }
-  
+
+ async function askOpenAI(){
+  const prompt = document.getElementById("aiPrompt").value.trim();
+  const output = document.getElementById("openAiOutput");
+
+  if(!prompt){
+    alert("Ask your AI assistant something first.");
+    return;
+  }
+
+  output.innerText = "Caz Visuals AI is thinking...";
+
+  const response = await fetch("/.netlify/functions/ai-assistant", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      prompt: prompt,
+      leads: leads,
+      contracts: contracts,
+      activities: activities
+    })
+  });
+
+  const data = await response.json();
+
+  if(!response.ok){
+    output.innerText = "AI error:\n" + JSON.stringify(data, null, 2);
+    return;
+  }
+
+  output.innerText = data.reply;
+} 
   
   loadLeads();
   loadContracts();

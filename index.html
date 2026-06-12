@@ -48,6 +48,7 @@
     <a href="#officeManager">Office Manager</a>
     <a href="#taskCenter">Task Center</a>
     <a href="#manualTaskCreator">Manual Task</a>
+    <a href="#taskList">Task List</a>
     <a href="#activities">Activities</a>
   </div>
 </div>
@@ -248,6 +249,18 @@
   <button onclick="createManualTask()">Create Manual Task</button>
 
   <div id="manualTaskOutput" class="reply-box"></div>
+</div>
+
+
+<div class="card" id="taskList">
+  <h2>Open Tasks</h2>
+  <p class="small">
+    Tasks created by the AI Task Center or Manual Task Creator will show here.
+  </p>
+
+  <button onclick="renderTaskList()">Refresh Task List</button>
+
+  <div id="taskListBox">Loading tasks...</div>
 </div>
 
 <div class="card" id="activities">
@@ -797,6 +810,113 @@ Caz Visuals`;
     await loadActivities();
   }
 
+
+  function isTaskActivity(activity){
+    return String(activity.activity_type || "").startsWith("Task -");
+  }
+
+  function isCompletionActivity(activity){
+    return String(activity.activity_type || "") === "Task Completed";
+  }
+
+  function getCompletedTaskNotes(){
+    return activities
+      .filter(isCompletionActivity)
+      .map(a => String(a.activity_note || ""));
+  }
+
+  function getOpenTasks(){
+    const completedNotes = getCompletedTaskNotes();
+
+    return activities.filter(a => {
+      if(!isTaskActivity(a)) return false;
+
+      const completionNote =
+        "Completed task: " + String(a.activity_note || "");
+
+      return !completedNotes.includes(completionNote);
+    });
+  }
+
+  function renderTaskList(){
+    const taskListBox = document.getElementById("taskListBox");
+
+    if(!taskListBox) return;
+
+    const openTasks = getOpenTasks();
+
+    taskListBox.innerHTML = "";
+
+    if(openTasks.length === 0){
+      taskListBox.innerHTML = "<p>No open tasks right now.</p>";
+      return;
+    }
+
+    openTasks.forEach(function(task){
+      const lead = leads.find(l => Number(l.id) === Number(task.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      taskListBox.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${task.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${task.activity_note}</p>
+          <p class="small">${task.created_at || ""}</p>
+
+          <button onclick="completeTask(${task.id})">Complete Task</button>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Delete Task</button>
+        </div>
+      `;
+    });
+  }
+
+  async function completeTask(taskId){
+    const task = activities.find(a => Number(a.id) === Number(taskId));
+
+    if(!task){
+      alert("Task not found.");
+      return;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: task.lead_id || null,
+      activity_type: "Task Completed",
+      activity_note: "Completed task: " + task.activity_note,
+      created_by: "Task List"
+    }]);
+
+    if(error){
+      alert("Error completing task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task completed.");
+  }
+
+  async function deleteTask(taskId){
+    if(!confirm("Delete this task?")){
+      return;
+    }
+
+    const { error } = await db
+      .from("activities")
+      .delete()
+      .eq("id", taskId);
+
+    if(error){
+      alert("Error deleting task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task deleted.");
+  }
+
   loadLeads();
   }
 
@@ -832,6 +952,7 @@ Caz Visuals`;
 
     activities = data || [];
     renderActivities();
+    renderTaskList();
   }
 
   async function addManualActivity(){
@@ -1390,6 +1511,113 @@ Caz Visuals`;
     await loadActivities();
   }
 
+
+  function isTaskActivity(activity){
+    return String(activity.activity_type || "").startsWith("Task -");
+  }
+
+  function isCompletionActivity(activity){
+    return String(activity.activity_type || "") === "Task Completed";
+  }
+
+  function getCompletedTaskNotes(){
+    return activities
+      .filter(isCompletionActivity)
+      .map(a => String(a.activity_note || ""));
+  }
+
+  function getOpenTasks(){
+    const completedNotes = getCompletedTaskNotes();
+
+    return activities.filter(a => {
+      if(!isTaskActivity(a)) return false;
+
+      const completionNote =
+        "Completed task: " + String(a.activity_note || "");
+
+      return !completedNotes.includes(completionNote);
+    });
+  }
+
+  function renderTaskList(){
+    const taskListBox = document.getElementById("taskListBox");
+
+    if(!taskListBox) return;
+
+    const openTasks = getOpenTasks();
+
+    taskListBox.innerHTML = "";
+
+    if(openTasks.length === 0){
+      taskListBox.innerHTML = "<p>No open tasks right now.</p>";
+      return;
+    }
+
+    openTasks.forEach(function(task){
+      const lead = leads.find(l => Number(l.id) === Number(task.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      taskListBox.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${task.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${task.activity_note}</p>
+          <p class="small">${task.created_at || ""}</p>
+
+          <button onclick="completeTask(${task.id})">Complete Task</button>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Delete Task</button>
+        </div>
+      `;
+    });
+  }
+
+  async function completeTask(taskId){
+    const task = activities.find(a => Number(a.id) === Number(taskId));
+
+    if(!task){
+      alert("Task not found.");
+      return;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: task.lead_id || null,
+      activity_type: "Task Completed",
+      activity_note: "Completed task: " + task.activity_note,
+      created_by: "Task List"
+    }]);
+
+    if(error){
+      alert("Error completing task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task completed.");
+  }
+
+  async function deleteTask(taskId){
+    if(!confirm("Delete this task?")){
+      return;
+    }
+
+    const { error } = await db
+      .from("activities")
+      .delete()
+      .eq("id", taskId);
+
+    if(error){
+      alert("Error deleting task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task deleted.");
+  }
+
   loadLeads();
   }
 
@@ -1909,6 +2137,113 @@ Caz Visuals`;
     await loadActivities();
   }
 
+
+  function isTaskActivity(activity){
+    return String(activity.activity_type || "").startsWith("Task -");
+  }
+
+  function isCompletionActivity(activity){
+    return String(activity.activity_type || "") === "Task Completed";
+  }
+
+  function getCompletedTaskNotes(){
+    return activities
+      .filter(isCompletionActivity)
+      .map(a => String(a.activity_note || ""));
+  }
+
+  function getOpenTasks(){
+    const completedNotes = getCompletedTaskNotes();
+
+    return activities.filter(a => {
+      if(!isTaskActivity(a)) return false;
+
+      const completionNote =
+        "Completed task: " + String(a.activity_note || "");
+
+      return !completedNotes.includes(completionNote);
+    });
+  }
+
+  function renderTaskList(){
+    const taskListBox = document.getElementById("taskListBox");
+
+    if(!taskListBox) return;
+
+    const openTasks = getOpenTasks();
+
+    taskListBox.innerHTML = "";
+
+    if(openTasks.length === 0){
+      taskListBox.innerHTML = "<p>No open tasks right now.</p>";
+      return;
+    }
+
+    openTasks.forEach(function(task){
+      const lead = leads.find(l => Number(l.id) === Number(task.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      taskListBox.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${task.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${task.activity_note}</p>
+          <p class="small">${task.created_at || ""}</p>
+
+          <button onclick="completeTask(${task.id})">Complete Task</button>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Delete Task</button>
+        </div>
+      `;
+    });
+  }
+
+  async function completeTask(taskId){
+    const task = activities.find(a => Number(a.id) === Number(taskId));
+
+    if(!task){
+      alert("Task not found.");
+      return;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: task.lead_id || null,
+      activity_type: "Task Completed",
+      activity_note: "Completed task: " + task.activity_note,
+      created_by: "Task List"
+    }]);
+
+    if(error){
+      alert("Error completing task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task completed.");
+  }
+
+  async function deleteTask(taskId){
+    if(!confirm("Delete this task?")){
+      return;
+    }
+
+    const { error } = await db
+      .from("activities")
+      .delete()
+      .eq("id", taskId);
+
+    if(error){
+      alert("Error deleting task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task deleted.");
+  }
+
   loadLeads();
     }
   }
@@ -2395,6 +2730,113 @@ Caz Visuals`;
     await loadActivities();
   }
 
+
+  function isTaskActivity(activity){
+    return String(activity.activity_type || "").startsWith("Task -");
+  }
+
+  function isCompletionActivity(activity){
+    return String(activity.activity_type || "") === "Task Completed";
+  }
+
+  function getCompletedTaskNotes(){
+    return activities
+      .filter(isCompletionActivity)
+      .map(a => String(a.activity_note || ""));
+  }
+
+  function getOpenTasks(){
+    const completedNotes = getCompletedTaskNotes();
+
+    return activities.filter(a => {
+      if(!isTaskActivity(a)) return false;
+
+      const completionNote =
+        "Completed task: " + String(a.activity_note || "");
+
+      return !completedNotes.includes(completionNote);
+    });
+  }
+
+  function renderTaskList(){
+    const taskListBox = document.getElementById("taskListBox");
+
+    if(!taskListBox) return;
+
+    const openTasks = getOpenTasks();
+
+    taskListBox.innerHTML = "";
+
+    if(openTasks.length === 0){
+      taskListBox.innerHTML = "<p>No open tasks right now.</p>";
+      return;
+    }
+
+    openTasks.forEach(function(task){
+      const lead = leads.find(l => Number(l.id) === Number(task.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      taskListBox.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${task.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${task.activity_note}</p>
+          <p class="small">${task.created_at || ""}</p>
+
+          <button onclick="completeTask(${task.id})">Complete Task</button>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Delete Task</button>
+        </div>
+      `;
+    });
+  }
+
+  async function completeTask(taskId){
+    const task = activities.find(a => Number(a.id) === Number(taskId));
+
+    if(!task){
+      alert("Task not found.");
+      return;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: task.lead_id || null,
+      activity_type: "Task Completed",
+      activity_note: "Completed task: " + task.activity_note,
+      created_by: "Task List"
+    }]);
+
+    if(error){
+      alert("Error completing task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task completed.");
+  }
+
+  async function deleteTask(taskId){
+    if(!confirm("Delete this task?")){
+      return;
+    }
+
+    const { error } = await db
+      .from("activities")
+      .delete()
+      .eq("id", taskId);
+
+    if(error){
+      alert("Error deleting task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task deleted.");
+  }
+
   loadLeads();
   }
 
@@ -2865,6 +3307,113 @@ Caz Visuals`;
       "Task created successfully. Check the Activity Timeline.";
 
     await loadActivities();
+  }
+
+
+  function isTaskActivity(activity){
+    return String(activity.activity_type || "").startsWith("Task -");
+  }
+
+  function isCompletionActivity(activity){
+    return String(activity.activity_type || "") === "Task Completed";
+  }
+
+  function getCompletedTaskNotes(){
+    return activities
+      .filter(isCompletionActivity)
+      .map(a => String(a.activity_note || ""));
+  }
+
+  function getOpenTasks(){
+    const completedNotes = getCompletedTaskNotes();
+
+    return activities.filter(a => {
+      if(!isTaskActivity(a)) return false;
+
+      const completionNote =
+        "Completed task: " + String(a.activity_note || "");
+
+      return !completedNotes.includes(completionNote);
+    });
+  }
+
+  function renderTaskList(){
+    const taskListBox = document.getElementById("taskListBox");
+
+    if(!taskListBox) return;
+
+    const openTasks = getOpenTasks();
+
+    taskListBox.innerHTML = "";
+
+    if(openTasks.length === 0){
+      taskListBox.innerHTML = "<p>No open tasks right now.</p>";
+      return;
+    }
+
+    openTasks.forEach(function(task){
+      const lead = leads.find(l => Number(l.id) === Number(task.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      taskListBox.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${task.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${task.activity_note}</p>
+          <p class="small">${task.created_at || ""}</p>
+
+          <button onclick="completeTask(${task.id})">Complete Task</button>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Delete Task</button>
+        </div>
+      `;
+    });
+  }
+
+  async function completeTask(taskId){
+    const task = activities.find(a => Number(a.id) === Number(taskId));
+
+    if(!task){
+      alert("Task not found.");
+      return;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: task.lead_id || null,
+      activity_type: "Task Completed",
+      activity_note: "Completed task: " + task.activity_note,
+      created_by: "Task List"
+    }]);
+
+    if(error){
+      alert("Error completing task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task completed.");
+  }
+
+  async function deleteTask(taskId){
+    if(!confirm("Delete this task?")){
+      return;
+    }
+
+    const { error } = await db
+      .from("activities")
+      .delete()
+      .eq("id", taskId);
+
+    if(error){
+      alert("Error deleting task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task deleted.");
   }
 
   loadLeads();
@@ -4233,6 +4782,113 @@ Caz Visuals`;
       "Task created successfully. Check the Activity Timeline.";
 
     await loadActivities();
+  }
+
+
+  function isTaskActivity(activity){
+    return String(activity.activity_type || "").startsWith("Task -");
+  }
+
+  function isCompletionActivity(activity){
+    return String(activity.activity_type || "") === "Task Completed";
+  }
+
+  function getCompletedTaskNotes(){
+    return activities
+      .filter(isCompletionActivity)
+      .map(a => String(a.activity_note || ""));
+  }
+
+  function getOpenTasks(){
+    const completedNotes = getCompletedTaskNotes();
+
+    return activities.filter(a => {
+      if(!isTaskActivity(a)) return false;
+
+      const completionNote =
+        "Completed task: " + String(a.activity_note || "");
+
+      return !completedNotes.includes(completionNote);
+    });
+  }
+
+  function renderTaskList(){
+    const taskListBox = document.getElementById("taskListBox");
+
+    if(!taskListBox) return;
+
+    const openTasks = getOpenTasks();
+
+    taskListBox.innerHTML = "";
+
+    if(openTasks.length === 0){
+      taskListBox.innerHTML = "<p>No open tasks right now.</p>";
+      return;
+    }
+
+    openTasks.forEach(function(task){
+      const lead = leads.find(l => Number(l.id) === Number(task.lead_id));
+      const clientName = lead ? lead.name : "General";
+
+      taskListBox.innerHTML += `
+        <div class="activity-card">
+          <p><strong>${task.activity_type}</strong></p>
+          <p><strong>Client:</strong> ${clientName}</p>
+          <p>${task.activity_note}</p>
+          <p class="small">${task.created_at || ""}</p>
+
+          <button onclick="completeTask(${task.id})">Complete Task</button>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Delete Task</button>
+        </div>
+      `;
+    });
+  }
+
+  async function completeTask(taskId){
+    const task = activities.find(a => Number(a.id) === Number(taskId));
+
+    if(!task){
+      alert("Task not found.");
+      return;
+    }
+
+    const { error } = await db.from("activities").insert([{
+      lead_id: task.lead_id || null,
+      activity_type: "Task Completed",
+      activity_note: "Completed task: " + task.activity_note,
+      created_by: "Task List"
+    }]);
+
+    if(error){
+      alert("Error completing task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task completed.");
+  }
+
+  async function deleteTask(taskId){
+    if(!confirm("Delete this task?")){
+      return;
+    }
+
+    const { error } = await db
+      .from("activities")
+      .delete()
+      .eq("id", taskId);
+
+    if(error){
+      alert("Error deleting task: " + error.message);
+      return;
+    }
+
+    await loadActivities();
+    renderTaskList();
+
+    alert("Task deleted.");
   }
 
   loadLeads();

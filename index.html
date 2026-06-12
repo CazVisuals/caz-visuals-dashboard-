@@ -5594,6 +5594,131 @@ function copyOpenAIOutput(){
 
   output.innerText = "Test email sent successfully.";
 }
+
+  async function sendCRMEmail(to, subject, message){
+  const response = await fetch("/.netlify/functions/send-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to, subject, message })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    alert("Email failed: " + JSON.stringify(data));
+    return false;
+  }
+
+  alert("Email sent successfully.");
+  return true;
+}
+
+  async function sendContractPackageEmail(id){
+  const contract = contracts.find(c => c.id === id);
+  if(!contract){
+    alert("Contract not found.");
+    return;
+  }
+
+  const lead = leads.find(l => String(l.id) === String(contract.lead_id));
+
+  if(!lead || !lead.email){
+    alert("No client email found for this contract.");
+    return;
+  }
+
+  const link = getPortalLink(contract.contract_number);
+
+  const message =
+`Hi ${contract.client_name},
+
+Your Caz Visuals agreement is ready for review.
+
+Please review your session details and agreement here:
+
+${link}
+
+Session Details:
+Service: ${contract.service}
+Date: ${contract.session_date || "To be confirmed"}
+Location: ${contract.location || "To be confirmed"}
+Total: $${contract.total}
+Deposit: $${contract.deposit}
+Balance: $${contract.balance}
+
+Thank you,
+Caz Visuals`;
+
+  await sendCRMEmail(
+    lead.email,
+    "Your Caz Visuals Agreement Is Ready",
+    message
+  );
+}
+
+  async function sendDepositReminderEmail(id){
+  const contract = contracts.find(c => c.id === id);
+  if(!contract) return alert("Contract not found.");
+
+  const lead = leads.find(l => String(l.id) === String(contract.lead_id));
+  if(!lead || !lead.email) return alert("No client email found.");
+
+  const link = getPortalLink(contract.contract_number);
+
+  const message =
+`Hi ${contract.client_name},
+
+Just a friendly reminder that your Caz Visuals deposit is still pending.
+
+Deposit Due: $${contract.deposit}
+
+You can review your agreement here:
+
+${link}
+
+Once the deposit is received, your session date will be officially secured.
+
+Thank you,
+Caz Visuals`;
+
+  await sendCRMEmail(
+    lead.email,
+    "Caz Visuals Deposit Reminder",
+    message
+  );
+}
+
+  async function sendBalanceReminderEmail(id){
+  const contract = contracts.find(c => c.id === id);
+  if(!contract) return alert("Contract not found.");
+
+  const lead = leads.find(l => String(l.id) === String(contract.lead_id));
+  if(!lead || !lead.email) return alert("No client email found.");
+
+  const link = getPortalLink(contract.contract_number);
+
+  const message =
+`Hi ${contract.client_name},
+
+This is a friendly reminder that your remaining Caz Visuals balance is still open.
+
+Remaining Balance: $${contract.balance}
+
+You can review your session details here:
+
+${link}
+
+Thank you,
+Caz Visuals`;
+
+  await sendCRMEmail(
+    lead.email,
+    "Caz Visuals Balance Reminder",
+    message
+  );
+}
+  
+  
   loadLeads();
   loadContracts();
   loadActivities();

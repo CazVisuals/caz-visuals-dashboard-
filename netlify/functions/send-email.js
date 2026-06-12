@@ -1,55 +1,41 @@
 exports.handler = async function(event) {
+  if (event.httpMethod !== "POST") {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: "Method not allowed" })
+    };
+  }
 
-if (event.httpMethod !== "POST") {
-return {
-statusCode: 405,
-body: JSON.stringify({
-error: "Method not allowed"
-})
-};
-}
+  try {
+    const body = JSON.parse(event.body || "{}");
 
-try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + process.env.RESEND_API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: process.env.FROM_EMAIL,
+        to: [body.to],
+        subject: body.subject,
+        text: body.message
+      })
+    });
 
-```
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL;
+    const data = await response.json();
 
-const body = JSON.parse(event.body || "{}");
+    return {
+      statusCode: response.status,
+      body: JSON.stringify(data)
+    };
 
-const response = await fetch("https://api.resend.com/emails", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer " + RESEND_API_KEY,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    from: FROM_EMAIL,
-    to: [body.to],
-    subject: body.subject,
-    html: body.message
-  })
-});
-
-const data = await response.json();
-
-return {
-  statusCode: response.status,
-  body: JSON.stringify(data)
-};
-```
-
-} catch (error) {
-
-```
-return {
-  statusCode: 500,
-  body: JSON.stringify({
-    error: error.message
-  })
-};
-```
-
-}
-
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: error.message
+      })
+    };
+  }
 };

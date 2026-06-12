@@ -191,6 +191,12 @@
   <div id="aiOutput" class="reply-box"></div>
 </div>
 
+  <div class="card" id="emailCenter">
+  <h2>Email Center</h2>
+  <button onclick="sendTestEmail()">Send Test Email</button>
+  <div id="emailOutput" class="reply-box"></div>
+</div>
+  
 <div class="card" id="dailyBrief">
   <h2>Daily Business Brief</h2>
   <button onclick="aiDailyBrief()">Generate Daily Brief</button>
@@ -4891,6 +4897,50 @@ Caz Visuals`;
     alert("Task deleted.");
   }
 
+async function sendTestEmail(){
+
+  try {
+
+    const response = await fetch("/.netlify/functions/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        to: "cazimirconstant@gmail.com",
+        subject: "Caz Visuals CRM Test Email",
+        message: "This is a test email from your Caz Visuals CRM. Email automation is working."
+      })
+    });
+
+    const result = await response.json();
+
+    if(!response.ok){
+
+      document.getElementById("emailOutput").innerText =
+        "Email failed: " + JSON.stringify(result);
+
+      alert("Email failed.");
+
+      return;
+    }
+
+    document.getElementById("emailOutput").innerText =
+      "Test email sent successfully.";
+
+    alert("Test email sent successfully.");
+
+  } catch(error){
+
+    document.getElementById("emailOutput").innerText =
+      "Email error: " + error.message;
+
+    alert("Email error: " + error.message);
+
+  }
+
+}
+  
   loadLeads();
   loadContracts();
   loadActivities();
